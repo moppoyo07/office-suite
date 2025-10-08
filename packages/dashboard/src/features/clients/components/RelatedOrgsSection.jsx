@@ -1,7 +1,7 @@
 // RelatedOrgsSection.jsx (2カラムレイアウト版)
 
 import { Box, Typography, Divider, Stack, TextField, Button, Grid } from '@mui/material';
-
+import { Paper } from '@mui/material';
 // --- 表示モード用の小さな部品 ---
 const DisplayGroup = ({ title, fields }) => (
     <Box sx={{ mb: 3 }}>
@@ -58,19 +58,19 @@ const RelatedOrgsSection = ({ isEditing, data, handleChange, handleSave, handleC
                         <Grid item xs={12} md={6}>
                             <Stack spacing={4}>
                                 <EditGroup title="かかりつけ医療機関 1">
-                                    <TextField size="small" name="medicalInstitution1_name" label="病院名" value={data.medicalInstitution1_name || ''} onChange={handleChange} fullWidth />
-                                    <TextField size="small" name="medicalInstitution1_phone" label="電話番号" value={data.medicalInstitution1_phone || ''} onChange={handleChange} fullWidth />
-                                    <TextField size="small" name="medicalInstitution1_doctor" label="担当医" value={data.medicalInstitution1_doctor || ''} onChange={handleChange} fullWidth />
-                                    <TextField size="small" name="medicalInstitution1_department" label="受診科目" value={data.medicalInstitution1_department || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="medicalInstitution1_name" label="病院名" value={data?.medicalInstitution1_name || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="medicalInstitution1_phone" label="電話番号" value={data?.medicalInstitution1_phone || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="medicalInstitution1_doctor" label="担当医" value={data?.medicalInstitution1_doctor || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="medicalInstitution1_department" label="受診科目" value={data?.medicalInstitution1_department || ''} onChange={handleChange} fullWidth />
                                 </EditGroup>
                                  <EditGroup title="かかりつけ医療機関 2">
-                                    <TextField size="small" name="medicalInstitution2_name" label="病院名" value={data.medicalInstitution2_name || ''} onChange={handleChange} fullWidth />
-                                    <TextField size="small" name="medicalInstitution2_phone" label="電話番号" value={data.medicalInstitution2_phone || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="medicalInstitution2_name" label="病院名" value={data?.medicalInstitution2_name || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="medicalInstitution2_phone" label="電話番号" value={data?.medicalInstitution2_phone || ''} onChange={handleChange} fullWidth />
                                 </EditGroup>
                                 <EditGroup title="相談支援事業所">
-                                    <TextField size="small" name="supportCenter_name" label="事業所名" value={data.supportCenter_name || ''} onChange={handleChange} fullWidth />
-                                    <TextField size="small" name="supportCenter_contactPerson" label="担当者名" value={data.supportCenter_contactPerson || ''} onChange={handleChange} fullWidth />
-                                    <TextField size="small" name="supportCenter_phone" label="電話番号" value={data.supportCenter_phone || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="supportCenter_name" label="事業所名" value={data?.supportCenter_name || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="supportCenter_contactPerson" label="担当者名" value={data?.supportCenter_contactPerson || ''} onChange={handleChange} fullWidth />
+                                    <TextField size="small" name="supportCenter_phone" label="電話番号" value={data?.supportCenter_phone || ''} onChange={handleChange} fullWidth />
                                 </EditGroup>
                             </Stack>
                         </Grid>
@@ -87,38 +87,38 @@ const RelatedOrgsSection = ({ isEditing, data, handleChange, handleSave, handleC
                     {/* === 左カラム: 緊急連絡先 === */}
                     <Grid item xs={12} md={6}>
                         <DisplayGroup title="緊急連絡先 1" fields={[
-                            { label: '氏名', value: data.emergencyContact1_name },
-                            { label: '続柄', value: data.emergencyContact1_relationship },
-                            { label: '電話番号', value: data.emergencyContact1_phone },
+                            { label: '氏名', value: data?.emergencyContact1_name },
+                            { label: '続柄', value: data?.emergencyContact1_relationship },
+                            { label: '電話番号', value: data?.emergencyContact1_phone },
                         ]} />
                          <DisplayGroup title="緊急連絡先 2" fields={[
-                            { label: '氏名', value: data.emergencyContact2_name },
-                            { label: '続柄', value: data.emergencyContact2_relationship },
-                            { label: '電話番号', value: data.emergencyContact2_phone },
+                            { label: '氏名', value: data?.emergencyContact2_name },
+                            { label: '続柄', value: data?.emergencyContact2_relationship },
+                            { label: '電話番号', value: data?.emergencyContact2_phone },
                         ]} />
                          <DisplayGroup title="緊急連絡先 3" fields={[
-                            { label: '氏名', value: data.emergencyContact3_name },
-                            { label: '続柄', value: data.emergencyContact3_relationship },
-                            { label: '電話番号', value: data.emergencyContact3_phone },
+                            { label: '氏名', value: data?.emergencyContact3_name },
+                            { label: '続柄', value: data?.emergencyContact3_relationship },
+                            { label: '電話番号', value: data?.emergencyContact3_phone },
                         ]} />
                     </Grid>
                     
                     {/* === 右カラム: それ以外 === */}
                     <Grid item xs={12} md={6}>
                         <DisplayGroup title="かかりつけ医療機関 1" fields={[
-                            { label: '病院名', value: data.medicalInstitution1_name },
-                            { label: '電話番号', value: data.medicalInstitution1_phone },
-                            { label: '担当医', value: data.medicalInstitution1_doctor },
-                            { label: '受診科目', value: data.medicalInstitution1_department },
+                            { label: '病院名', value: data?.medicalInstitution1_name },
+                            { label: '電話番号', value: data?.medicalInstitution1_phone },
+                            { label: '担当医', value: data?.medicalInstitution1_doctor },
+                            { label: '受診科目', value: data?.medicalInstitution1_department },
                         ]} />
                         <DisplayGroup title="かかりつけ医療機関 2" fields={[
-                            { label: '病院名', value: data.medicalInstitution2_name },
-                            { label: '電話番号', value: data.medicalInstitution2_phone },
+                            { label: '病院名', value: data?.medicalInstitution2_name },
+                            { label: '電話番号', value: data?.medicalInstitution2_phone },
                         ]} />
                         <DisplayGroup title="相談支援事業所" fields={[
-                            { label: '事業所名', value: data.supportCenter_name },
-                            { label: '担当者名', value: data.supportCenter_contactPerson },
-                            { label: '電話番号', value: data.supportCenter_phone },
+                            { label: '事業所名', value: data?.supportCenter_name },
+                            { label: '担当者名', value: data?.supportCenter_contactPerson },
+                            { label: '電話番号', value: data?.supportCenter_phone },
                         ]} />
                     </Grid>
                 </Grid>
