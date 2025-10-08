@@ -1,15 +1,16 @@
-// src/features/clients/ClientDetailPage.jsx (改造後・コピペ用)
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Paper, Typography, Box, List, ListItem, ListItemButton, ListItemText, IconButton, Button, CircularProgress, Dialog, DialogTitle, DialogContent, Stack } from '@mui/material'; // ★ 変更点: Dialog関連とStackを追加
+import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
+import { db } from "@/firebase/index.js";
+import { useAuth } from '../auth/context/AuthContext.jsx';
+import {
+  Paper, Typography, Box, List, ListItem, ListItemButton, ListItemText,
+  IconButton, Button, CircularProgress, Stack, Dialog, DialogTitle, DialogContent
+} from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import PostAddIcon from '@mui/icons-material/PostAdd'; // ★ 変更点: 新しいアイコン
-import { getDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore"; // ★ 変更点: collection, addDoc を追加
-import { db } from "@/firebase/index.js";
-import { useAuth } from '../auth/context/AuthContext.jsx'; // ★ 変更点: ログインユーザー情報を取得
+import PostAddIcon from '@mui/icons-material/PostAdd';
 
 // モーダルコンポーネント
 import SurveyRequestModal from "./components/SurveyRequestModal";
@@ -20,13 +21,12 @@ import BasicInfoSection from './components/BasicInfoSection.jsx';
 import WelfareContractSection from './components/WelfareContractSection.jsx';
 import RelatedOrgsSection from './components/RelatedOrgsSection.jsx';
 import HealthStatusSection from './components/HealthStatusSection.jsx';
-import ActivityLogList from './components/ActivityLogList.jsx';   // ★ 変更点: 新しいコンポーネント
-import ActivityLogForm from './components/ActivityLogForm.jsx';   // ★ 変更点: 新しいコンポーネント
+import ActivityLogList from './components/ActivityLogList.jsx';
+import ActivityLogForm from './components/ActivityLogForm.jsx';
 
-// ★ 変更点: メニューに「活動記録」を追加
-const detailMenu = [ 
+const detailMenu = [
   { id: 'basic', label: '基本情報' },
-  { id: 'activity', label: '活動記録' }, // ★ ここ！
+  { id: 'activity', label: '活動記録' },
   { id: 'welfareContract', label: '福祉・契約' },
   { id: 'relatedOrgs', label: '関係機関' },
   { id: 'health', label: '心身の状況' },
@@ -35,7 +35,7 @@ const detailMenu = [
 function ClientDetailPage() {
   const { clientId } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth(); // ★ 変更点: ログインユーザー情報を取得
+  const { currentUser } = useAuth();
 
   // --- Stateの定義 ---
   const [selectedMenu, setSelectedMenu] = useState('basic');
@@ -43,22 +43,69 @@ function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(null);
-  
+
   const [openSurveyModal, setOpenSurveyModal] = useState(false);
   const [openScheduleModal, setOpenScheduleModal] = useState(false);
-  const [openLogModal, setOpenLogModal] = useState(false); // ★ 変更点: 活動記録モーダルのstate
+  const [openLogModal, setOpenLogModal] = useState(false);
 
   const surveyUrl = `${window.location.origin}/survey/${clientId}`;
 
-  // --- データ取得 (変更なし) ---
-  useEffect(() => { /* ... 既存のコードのまま ... */ }, [clientId, navigate]);
-  
-  // --- 編集・保存・キャンセル処理 (変更なし) ---
-  const handleEditChange = (e) => { /* ... 既存のコードのまま ... */ };
-  const handleSave = async (dataToSave = editData) => { /* ... 既存のコードのまま ... */ };
-  const handleCancelEdit = () => { /* ... 既存のコードのまま ... */ };
+  // --- データ取得 ---
+  useEffect(() => {
+    if (!clientId) {
+      setLoading(false);
+      return;
+    }
 
-  // ★ 変更点: 活動記録を保存する新しい関数
+    const fetchClientData = async () => {
+      setLoading(true);
+      try {
+        console.log('データの取得を開始します。ID:', clientId);
+        const docRef = doc(db, 'clients', clientId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = { id: docSnap.id, ...docSnap.data() };
+          console.log('データが見つかりました:', data);
+          setClientData(data);
+          setEditData(data); // 編集用のデータも初期化
+        } else {
+          console.log("ドキュメントが見つかりませんでした。");
+          navigate('/clients'); // データがない場合は一覧に戻す
+        }
+      } catch (error) {
+        console.error("データ取得中にエラーが発生しました:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClientData();
+  }, [clientId, navigate]);
+
+  // --- 編集・保存・キャンセル処理 ---
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async (dataToSave = editData) => {
+    try {
+      const docRef = doc(db, "clients", clientId);
+      await updateDoc(docRef, { ...dataToSave, updatedAt: serverTimestamp() });
+      setClientData(dataToSave); // 画面表示を即時更新
+      setIsEditing(false);
+    } catch (error) {
+      console.error("更新エラー:", error);
+    }
+  };
+  
+  const handleCancelEdit = () => {
+    setEditData(clientData); // 変更を元に戻す
+    setIsEditing(false);
+  };
+
+  // --- 活動記録を保存する関数 ---
   const handleSaveLog = async (logData) => {
     if (!clientId || !currentUser) {
       alert("エラー: ログイン情報が見つかりません。");
@@ -67,21 +114,27 @@ function ClientDetailPage() {
     try {
       const logsRef = collection(db, 'clients', clientId, 'activity_logs');
       await addDoc(logsRef, {
-        ...logData, // { type, content }
+        ...logData,
         createdAt: serverTimestamp(),
         staffUid: currentUser.uid,
-        staffName: currentUser.staffName,
+        staffName: currentUser.staffName || currentUser.displayName, // staffNameがなければdisplayNameを使う
       });
-      setOpenLogModal(false); // モーダルを閉じる
+      setOpenLogModal(false);
     } catch (error) {
       console.error("活動記録の保存に失敗:", error);
       alert("エラーが発生しました。記録を保存できませんでした。");
     }
   };
 
-  // --- レンダリング前のチェック (変更なし) ---
-  if (loading) { /* ... 既存のコードのまま ... */ }
-  if (!clientData) { /* ... 既存のコードのまま ... */ }
+  // --- レンダリング前のチェック ---
+  if (loading) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
+  }
+
+  // データがない場合は何も表示しない（useEffectでリダイレクトされるはず）
+  if (!clientData) {
+    return null;
+  }
 
   const currentData = isEditing ? editData : clientData;
 
@@ -91,14 +144,21 @@ function ClientDetailPage() {
       <Paper sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}>
         {/* ヘッダー部分 */}
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
-          <IconButton onClick={() => navigate('/clients')}><ArrowBackIcon /></IconButton>
+          <IconButton onClick={() => navigate(-1)}><ArrowBackIcon /></IconButton>
           <Typography variant="h6" sx={{ ml: 2, flexGrow: 1 }}>{clientData?.name}</Typography>
-          
-          <Stack direction="row" spacing={1}> {/* ★ 変更点: ボタンをStackで囲む */}
+
+          <Stack direction="row" spacing={1}>
             <Button variant="contained" color="primary" startIcon={<PostAddIcon />} onClick={() => setOpenLogModal(true)}>
               活動記録を追加
             </Button>
-            <Button variant="outlined" startIcon={<CalendarMonthIcon />} onClick={() => setOpenScheduleModal(true)}>
+            <Button
+              variant="outlined"
+              startIcon={<CalendarMonthIcon />}
+              onClick={() => {
+                console.log('日程管理ボタンがクリックされました！');
+                setOpenScheduleModal(true);
+              }}
+            >
               日程管理
             </Button>
             <Button variant="outlined" onClick={() => setOpenSurveyModal(true)}>
@@ -111,7 +171,7 @@ function ClientDetailPage() {
         {/* メインコンテンツ部分 */}
         <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
           {/* 左メニュー */}
-          <Box sx={{ width: 240, borderRight: 1, borderColor: 'divider', flexShrink: 0 }}> {/* ★ 変更点: 少し幅を広げる */}
+          <Box sx={{ width: 240, borderRight: 1, borderColor: 'divider', flexShrink: 0 }}>
             <List>
               {detailMenu.map(item => (
                 <ListItem key={item.id} disablePadding>
@@ -125,10 +185,7 @@ function ClientDetailPage() {
           {/* 右コンテンツエリア */}
           <Box sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
             {selectedMenu === 'basic' && ( <BasicInfoSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}
-            
-            {/* ★ 変更点: 活動記録の表示エリア */}
             {selectedMenu === 'activity' && ( <ActivityLogList clientId={clientId} /> )}
-
             {selectedMenu === 'welfareContract' && ( <WelfareContractSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}
             {selectedMenu === 'relatedOrgs' && ( <RelatedOrgsSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}
             {selectedMenu === 'health' && ( <HealthStatusSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}
@@ -138,14 +195,23 @@ function ClientDetailPage() {
 
       {/* モーダル呼び出しエリア */}
       <SurveyRequestModal open={openSurveyModal} onClose={() => setOpenSurveyModal(false)} surveyUrl={surveyUrl} />
-      {clientData && ( <ScheduleModal open={openScheduleModal} onClose={() => setOpenScheduleModal(false)} data={clientData} onSave={handleSave} /> )}
+      
+      {/* ScheduleModalはclientDataが存在する場合のみレンダリング */}
+      {clientData && (
+        <ScheduleModal
+          open={openScheduleModal}
+          onClose={() => setOpenScheduleModal(false)}
+          data={clientData}
+          onSave={handleSave}
+        />
+      )}
 
-      {/* ★ 変更点: 活動記録追加用モーダル */}
+      {/* 活動記録追加用モーダル */}
       <Dialog open={openLogModal} onClose={() => setOpenLogModal(false)} fullWidth maxWidth="sm">
         <DialogTitle>活動記録の追加</DialogTitle>
-        <DialogContent sx={{ pt: '16px !important' }}> {/* MUI v5の버그回避 */}
-          <ActivityLogForm 
-            onSubmit={handleSaveLog} 
+        <DialogContent sx={{ pt: '16px !important' }}>
+          <ActivityLogForm
+            onSubmit={handleSaveLog}
             onCancel={() => setOpenLogModal(false)}
           />
         </DialogContent>
