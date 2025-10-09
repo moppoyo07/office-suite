@@ -1,51 +1,46 @@
-// src/features/clients/components/ActivityLogForm.jsx
 import { useState } from 'react';
-import { Box, Button, TextField, Select, MenuItem, FormControl, InputLabel, Stack } from '@mui/material';
+import { TextField, Button, Stack, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 
-const activityTypes = ["面談", "電話", "来所時", "その他"];
-
-function ActivityLogForm({ onSubmit, onCancel, initialData = {} }) {
-  const [type, setType] = useState(initialData.type || "面談");
-  const [content, setContent] = useState(initialData.content || "");
+const ActivityLogForm = ({ onSubmit, onCancel, isSaving }) => {
+  const [type, setType] = useState('meeting_office');
+  const [content, setContent] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!content.trim()) {
-      alert("内容を入力してください。");
-      return;
-    }
     onSubmit({ type, content });
-    // フォームをリセット
-    setType("面談");
-    setContent("");
+    // 送信後にフォームをクリア
+    setType('meeting_office');
+    setContent('');
   };
 
+  const isSubmitDisabled = !type || !content || isSaving;
+
   return (
-    <Box component="form" onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit}>
       <Stack spacing={2}>
         <FormControl fullWidth>
-          <InputLabel>種別</InputLabel>
-          <Select value={type} label="種別" onChange={(e) => setType(e.target.value)}>
-            {activityTypes.map((t) => (
-              <MenuItem key={t} value={t}>{t}</MenuItem>
-            ))}
+          <InputLabel id="log-type-label">活動種別</InputLabel>
+          {/* ★★★ 変更点：選択肢を統一！ ★★★ */}
+          <Select labelId="log-type-label" value={type} label="活動種別" onChange={(e) => setType(e.target.value)}>
+            <MenuItem value="meeting_office">面談（事業所内）</MenuItem>
+            <MenuItem value="meeting_external">面談（事業所外）</MenuItem>
+            <MenuItem value="phone_call">電話連絡</MenuItem>
+            <MenuItem value="email">メール連絡</MenuItem>
+            <MenuItem value="visit_home">家庭訪問</MenuItem>
+            <MenuItem value="visit_company">職場訪問</MenuItem>
+            <MenuItem value="other">その他</MenuItem>
           </Select>
         </FormControl>
-        <TextField
-          label="活動内容"
-          multiline
-          rows={5}
-          fullWidth
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-        <Stack direction="row" spacing={1} justifyContent="flex-end">
-          <Button onClick={onCancel}>キャンセル</Button>
-          <Button type="submit" variant="contained">保存</Button>
+        <TextField label="活動内容" multiline rows={5} value={content} onChange={(e) => setContent(e.target.value)} fullWidth required />
+        <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mt: 2 }}>
+          <Button onClick={onCancel} disabled={isSaving}>キャンセル</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitDisabled}>
+            {isSaving ? '保存中...' : '保存する'}
+          </Button>
         </Stack>
       </Stack>
-    </Box>
+    </form>
   );
-}
+};
 
 export default ActivityLogForm;

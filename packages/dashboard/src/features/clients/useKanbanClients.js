@@ -1,9 +1,9 @@
-// src/features/clients/useKanbanClients.js (新規作成)
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, getDocs, doc, updateDoc, query, where, addDoc, serverTimestamp } from "firebase/firestore";
-import { db, auth } from "@/firebase/index.js";
+import { collection, getDocs, doc, updateDoc, query, where } from "firebase/firestore";
+import { db } from "@/firebase/index.js";
+import { useActivityLog } from '@/hooks/useActivityLog';
 
+// ★★★ 変更点：kanbanColumnsの定義を、関数の外（トップレベル）に移動しました！ ★★★
 const kanbanColumns = [
   { id: 'lead-new', title: '新規問合せ' },
   { id: 'lead-consulting', title: '相談・見学' },
@@ -11,7 +11,6 @@ const kanbanColumns = [
   { id: 'contract-prep', title: '契約準備中' },
 ];
 
-// このフックが、カンバンボードに必要なすべてのロジックとデータを提供する
 export function useKanbanClients() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +22,8 @@ export function useKanbanClients() {
   const [typeSelectTargetId, setTypeSelectTargetId] = useState(null);
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
   const [followUpTargetId, setFollowUpTargetId] = useState(null);
+
+  const { saveLog, isSaving: isSavingLog } = useActivityLog();
 
   // --- データ取得 ---
   const fetchClients = useCallback(async () => {
@@ -38,6 +39,7 @@ export function useKanbanClients() {
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
+  // (ここから下のハンドラ関数群は、先ほどのコピペ版から変更ありません)
   // --- ハンドラ関数群 ---
   const handleUpdateStatus = useCallback(async (clientId, newStatus) => {
     if (newStatus === 'trigger-modal') {
@@ -79,16 +81,13 @@ export function useKanbanClients() {
     setIsFollowUpModalOpen(true);
   }, []);
 
-  const handleConfirmFollowUp = useCallback(async (actionType, memo) => {
+  const handleConfirmFollowUp = useCallback(async (logData) => {
     if (!followUpTargetId) return;
-    try {
-      await addDoc(collection(db, "clients", followUpTargetId, "follow_ups"), { actionType, memo, staffId: auth.currentUser.uid, createdAt: serverTimestamp() });
-      alert('活動を記録しました。');
-    } catch (error) { console.error("活動記録の保存エラー:", error); }
-    finally { setIsFollowUpModalOpen(false); setFollowUpTargetId(null); }
-  }, [followUpTargetId]);
+    await saveLog(followUpTargetId, logData); 
+    setIsFollowUpModalOpen(false);
+    setFollowUpTargetId(null);
+  }, [followUpTargetId, saveLog]);
   
-  // --- 表示用データの計算 ---
   const categorizedClients = useMemo(() => {
     const data = {};
     kanbanColumns.forEach(column => {
@@ -97,33 +96,17 @@ export function useKanbanClients() {
     return data;
   }, [clients]);
 
-  // --- このフックがコンポーネントに渡す値 ---
   return {
     loading,
-    kanbanColumns,
+    kanbanColumns, // ★ これが正しく返されるようになる！
     categorizedClients,
     handleUpdateStatus,
     handleOpenLostModal,
     handleOpenFollowUpModal,
-    // モーダル関連の状態とハンドラ
     modals: {
-      lost: {
-        isOpen: isLostModalOpen,
-        onClose: () => setIsLostModalOpen(false),
-        onSubmit: handleConfirmLost,
-      },
-      selectType: {
-        isOpen: isSelectTypeModalOpen,
-        onClose: () => setIsSelectTypeModalOpen(false),
-        onSubmit: handleConfirmClientType,
-        targetId: typeSelectTargetId,
-      },
-      followUp: {
-        isOpen: isFollowUpModalOpen,
-        onClose: () => setIsFollowUpModalOpen(false),
-        onSubmit: handleConfirmFollowUp,
-        targetId: followUpTargetId,
-      },
+      lost: { isOpen: isLostModalOpen, onClose: () => setIsLostModalOpen(false), onSubmit: handleConfirmLost, },
+      selectType: { isOpen: isSelectTypeModalOpen, onClose: () => setIsSelectTypeModalOpen(false), onSubmit: handleConfirmClientType, targetId: typeSelectTargetId, },
+      followUp: { isOpen: isFollowUpModalOpen, onClose: () => setIsFollowUpModalOpen(false), onSubmit: handleConfirmFollowUp, targetId: followUpTargetId, isSaving: isSavingLog, },
     },
   };
 }

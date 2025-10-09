@@ -1,19 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Modal, Box, Typography, TextField, Button, Stack, Select, MenuItem, FormControl, InputLabel, Divider, CircularProgress } from '@mui/material';
-import { doc, getDoc } from "firebase/firestore"; // ★ getDoc をインポート
-import { db } from "@/firebase/index.js"; // ★ db をインポート
+import { Modal, Box, Typography, TextField, Button, Stack, Select, MenuItem, FormControl, InputLabel, Divider, CircularProgress, Paper } from '@mui/material'; // ★ Paperを追加
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/firebase/index.js";
 
-// ★ propsを clientId に変更
-const FollowUpModal = ({ open, onClose, onSubmit, clientId }) => {
+const modalStyle = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: 450, // 少し幅を広げる
+  bgcolor: 'background.paper',
+  boxShadow: 24,
+  p: 4,
+  borderRadius: 2, // 角を少し丸める
+};
+
+const FollowUpModal = ({ open, onClose, onSubmit, clientId, isSaving }) => { 
   const [actionType, setActionType] = useState('phone_call');
   const [memo, setMemo] = useState('');
   
-  // ★★★ ここからが新しい部分 ★★★
   const [clientInfo, setClientInfo] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // モーダルが開かれ、かつclientIdが渡された時に、データを取得する
     const fetchClientInfo = async () => {
       if (open && clientId) {
         setLoading(true);
@@ -21,46 +30,38 @@ const FollowUpModal = ({ open, onClose, onSubmit, clientId }) => {
           const docRef = doc(db, "clients", clientId);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            // 必要な情報（nameとphoneNumber）だけをstateに保存
             setClientInfo({
               name: docSnap.data().name,
               phoneNumber: docSnap.data().phoneNumber,
             });
           }
-        } catch (error) {
-          console.error("利用者情報の取得エラー:", error);
-        } finally {
-          setLoading(false);
-        }
+        } catch (error) { console.error("利用者情報の取得エラー:", error); }
+        finally { setLoading(false); }
       }
     };
-
     fetchClientInfo();
 
-    // モーダルが開くたびにフォームをリセット
     if (open) {
       setActionType('phone_call');
       setMemo('');
     } else {
-      // 閉じるときに取得した情報をクリア
       setClientInfo(null);
     }
-  }, [open, clientId]); // ★ openとclientIdが変わるたびに実行
+  }, [open, clientId]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(actionType, memo);
+    onSubmit({ type: actionType, content: memo });
   };
 
+  const isSubmitDisabled = !actionType || !memo || isSaving;
+
   return (
+    // ★★★ 変更点： <Box> の代わりに <Paper> を使うことで、背景が白くなります ★★★
     <Modal open={open} onClose={onClose}>
-      <Box sx={{
-        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: 400, bgcolor: 'background.paper', border: '2px solid #000', boxShadow: 24, p: 4,
-      }}>
+      <Paper sx={modalStyle}>
         <Typography variant="h5" component="h2">活動記録</Typography>
         
-        {/* ★★★ ここから表示部分を修正 ★★★ */}
         {loading ? (
           <CircularProgress sx={{ my: 2 }} />
         ) : clientInfo ? (
@@ -76,26 +77,28 @@ const FollowUpModal = ({ open, onClose, onSubmit, clientId }) => {
           <Typography sx={{ my: 2 }}>利用者情報を読み込めませんでした。</Typography>
         )}
         <Divider sx={{ my: 2 }} />
-        {/* ★★★ ここまで ★★★ */}
         
         <form onSubmit={handleSubmit}>
-          <Stack spacing={2}>
-            {/* ... (フォーム部分は変更なし) ... */}
+          <Stack spacing={2} sx={{ mt: 2 }}>
             <FormControl fullWidth>
               <InputLabel id="action-type-label">活動種別</InputLabel>
               <Select labelId="action-type-label" value={actionType} label="活動種別" onChange={(e) => setActionType(e.target.value)}>
-                <MenuItem value="phone_call">電話</MenuItem><MenuItem value="email">メール</MenuItem>
-                <MenuItem value="meeting">面談</MenuItem><MenuItem value="other">その他</MenuItem>
+                <MenuItem value="phone_call">電話</MenuItem>
+                <MenuItem value="email">メール</MenuItem>
+                <MenuItem value="meeting">面談</MenuItem>
+                <MenuItem value="other">その他</MenuItem>
               </Select>
             </FormControl>
-            <TextField label="活動メモ" multiline rows={4} value={memo} onChange={(e) => setMemo(e.target.value)} fullWidth />
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-              <Button onClick={onClose}>キャンセル</Button>
-              <Button type="submit" variant="contained">記録する</Button>
+            <TextField label="活動メモ" multiline rows={4} value={memo} onChange={(e) => setMemo(e.target.value)} fullWidth required />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+              <Button onClick={onClose} disabled={isSaving}>キャンセル</Button>
+              <Button type="submit" variant="contained" disabled={isSubmitDisabled}>
+                {isSaving ? <CircularProgress size={24} /> : '記録する'}
+              </Button>
             </Box>
           </Stack>
         </form>
-      </Box>
+      </Paper>
     </Modal>
   );
 };
