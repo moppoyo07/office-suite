@@ -1,18 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/firebase/index.js";
-import { useActivityLog } from '@/hooks/useActivityLog'; // ★ これが専門家
+import { useActivityLog } from '@/hooks/useActivityLog';
 
-// かんばんのカラム定義
 export const followUpKanbanColumns = [
-  // ...(ここは変更なし)...
+  { id: 'm1', title: '1ヶ月目', status: 'follow-up-m1' },
+  { id: 'm2', title: '2ヶ月目', status: 'follow-up-m2' },
+  { id: 'm3', title: '3ヶ月目', status: 'follow-up-m3' },
+  { id: 'm4', title: '4ヶ月目', status: 'follow-up-m4' },
+  { id: 'm5', title: '5ヶ月目', status: 'follow-up-m5' },
 ];
 
 export const useFollowUpClients = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // --- モーダルの状態管理 ---
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
   const [completionTargetId, setCompletionTargetId] = useState(null);
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
@@ -20,81 +22,107 @@ export const useFollowUpClients = () => {
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
   const [followUpTargetId, setFollowUpTargetId] = useState(null);
 
-  // ★ 活動記録の専門家を呼び出す
   const { saveLog, isSaving: isSavingLog } = useActivityLog();
 
-  // --- データ取得 (リアルタイム) ---
   useEffect(() => {
-    // ...(ここは変更なし)...
+    setLoading(true);
+    const followUpStatuses = followUpKanbanColumns.map(col => col.status);
+    const q = query(collection(db, "clients"), where("status", "in", followUpStatuses));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setClients(clientsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("定着支援利用者の取得エラー:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // --- データをカラムごとに分類 ---
   const categorizedClients = useMemo(() => {
-    // ...(ここは変更なし)...
+    return followUpKanbanColumns.reduce((acc, column) => {
+      acc[column.id] = clients.filter(client => client.status === column.status);
+      return acc;
+    }, {});
   }, [clients]);
 
-  // --- アクション: ステータス更新 (カード移動) ---
   const handleUpdateStatus = useCallback(async (clientId, newStatus) => {
-    // ...(ここは変更なし)...
+    try {
+      await updateDoc(doc(db, "clients", clientId), { status: newStatus });
+    } catch (error) {
+      console.error("ステータス更新エラー:", error);
+    }
   }, []);
 
-  // --- アクション: 完了処理 ---
   const handleOpenCompletionModal = useCallback((clientId) => {
-    // ...(ここは変更なし)...
+    setCompletionTargetId(clientId);
+    setIsCompletionModalOpen(true);
   }, []);
 
   const handleConfirmCompletion = useCallback(async (completionDate) => {
-    // ...(ここは変更なし)...
+    if (!completionTargetId || !completionDate) return;
+    try {
+      await updateDoc(doc(db, "clients", completionTargetId), { 
+        status: 'completed',
+        followUpCompletionDate: completionDate
+      });
+    } catch (error) {
+      console.error("完了処理エラー:", error);
+    } finally {
+      setIsCompletionModalOpen(false);
+      setCompletionTargetId(null);
+    }
   }, [completionTargetId]);
 
-  // --- アクション: ロスト/退職処理 ---
   const handleOpenLostModal = useCallback((clientId, currentStatus) => {
-    // ...(ここは変更なし)...
+    setLostTarget({ id: clientId, status: currentStatus });
+    setIsLostModalOpen(true);
   }, []);
 
+  // ★★★ ここが修正された部分です ★★★
   const handleConfirmLost = useCallback(async (reason, details) => {
-    // ...(ここは変更なし)...
+    if (!lostTarget) return;
+    try {
+      await updateDoc(doc(db, "clients", lostTarget.id), { 
+        isRetired: true,
+        retiredAt: new Date(),
+        lostReason: reason,
+        lostReasonDetails: details
+      });
+    } catch (error) { // ← ここに { がありませんでした
+      console.error("退職処理エラー:", error);
+    } finally {
+      setIsLostModalOpen(false);
+      setLostTarget(null);
+    }
   }, [lostTarget]);
 
-  // --- アクション: 活動記録 (📞ボタン) ---
   const handleOpenFollowUpModal = useCallback((clientId) => {
     setFollowUpTargetId(clientId);
     setIsFollowUpModalOpen(true);
   }, []);
   
-  // ★★★ ここが一番の変更点！ ★★★
   const handleConfirmFollowUp = useCallback(async (logData) => {
     if (!followUpTargetId) return;
-    // 専門家にお願いするだけ！
     await saveLog(followUpTargetId, logData);
     setIsFollowUpModalOpen(false);
     setFollowUpTargetId(null);
   }, [followUpTargetId, saveLog]);
 
-  // --- フックから返す値 ---
   return {
-    // ...
-    // ... (他のreturn値はそのまま)
+    loading,
+    kanbanColumns: followUpKanbanColumns,
+    categorizedClients,
+    handleUpdateStatus,
+    handleComplete: handleOpenCompletionModal, 
+    handleOpenLostModal,
     handleOpenFollowUpModal,
     modals: {
-      // ... (completion, lost はそのまま)
-      completion: {
-        isOpen: isCompletionModalOpen,
-        onClose: () => setIsCompletionModalOpen(false),
-        onSubmit: handleConfirmCompletion,
-      },
-      lost: {
-        isOpen: isLostModalOpen,
-        onClose: () => setIsLostModalOpen(false),
-        onSubmit: handleConfirmLost,
-      },
-      followUp: {
-        isOpen: isFollowUpModalOpen,
-        onClose: () => setIsFollowUpModalOpen(false),
-        targetId: followUpTargetId,
-        onSubmit: handleConfirmFollowUp, // ★ 変更点
-        isSaving: isSavingLog, // ローディング状態も渡せる
-      },
+      completion: { isOpen: isCompletionModalOpen, onClose: () => setIsCompletionModalOpen(false), onSubmit: handleConfirmCompletion, },
+      lost: { isOpen: isLostModalOpen, onClose: () => setIsLostModalOpen(false), onSubmit: handleConfirmLost, },
+      followUp: { isOpen: isFollowUpModalOpen, onClose: () => setIsFollowUpModalOpen(false), targetId: followUpTargetId, onSubmit: handleConfirmFollowUp, isSaving: isSavingLog, },
     },
   };
 };
