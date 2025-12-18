@@ -1,5 +1,15 @@
 {
   "projects": {
-    "default": "photo-upload-form"
-  }
+    "default": "officehub-c6c1b"
+  },
+  "targets": {
+    "officehub-c6c1b": {
+      "hosting": {
+        "manecto": [
+          "manecto"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

@@ -3,42 +3,51 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/index.js";
 import { useAuth } from '@/features/auth/context/AuthContext';
 
-// 'use'で始まる関数名がカスタムフックのルール
 export const useActivityLog = () => {
   const { currentUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // ★ この関数が、活動記録を保存する本体！
   const saveLog = async (clientId, logData) => {
-    console.log('★★ useActivityLog: saveLogが実行されました！');
-    console.log(`保存先のクライアントID: ${clientId}`);
-    console.log('保存するデータ:', logData);
-    if (!clientId || !currentUser) {
-      setError("クライアントIDまたはユーザー情報がありません。");
-      return;
+    // IDチェック
+    if (!clientId) {
+      console.error("【保存失敗】クライアントIDがありません");
+      setError("利用者情報が取得できませんでした。");
+      return { success: false, error: "利用者IDが不明です" };
     }
 
     setIsSaving(true);
     setError(null);
 
     try {
+      // ユーザー情報（保険）
+      const staffUid = currentUser?.uid || 'unknown_staff';
+      const staffName = currentUser?.staffName || currentUser?.displayName || '担当職員';
+
+      // ★★★ 絶対にここが必要です！ ★★★
+      // logData の中にある 'id' (undefined) を取り除き、残りを dataToSave に入れます。
+      const { id, ...dataToSave } = logData;
+
       const logsCollectionRef = collection(db, 'clients', clientId, 'activity_logs');
+      
       await addDoc(logsCollectionRef, {
-        ...logData, // { type, content }
+        ...dataToSave, // idを含まないきれいなデータ
         createdAt: serverTimestamp(),
-        staffUid: currentUser.uid,
-        staffName: currentUser.staffName || currentUser.displayName,
+        staffUid: staffUid,
+        staffName: staffName,
       });
-      console.log(`クライアント(ID: ${clientId})の活動記録を保存しました。`);
+      
+      console.log("【保存成功】");
+      return { success: true };
+
     } catch (e) {
-      console.error("活動記録の保存に失敗:", e);
-      setError("活動記録の保存に失敗しました。");
+      console.error("【保存エラー】", e);
+      setError("保存中にエラーが発生しました。");
+      return { success: false, error: e.message };
     } finally {
       setIsSaving(false);
     }
   };
 
-  // このフックを使うコンポーネントに、保存関数と状態を渡す
   return { saveLog, isSaving, error };
 };

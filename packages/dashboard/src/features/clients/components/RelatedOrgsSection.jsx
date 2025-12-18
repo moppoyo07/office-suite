@@ -1,14 +1,16 @@
-// RelatedOrgsSection.jsx (2カラムレイアウト版)
+// RelatedOrgsSection.jsx (2カラムレイアウト版・Grid修正済み)
 
 import { Box, Typography, Divider, Stack, TextField, Button, Grid } from '@mui/material';
 import { Paper } from '@mui/material';
+
 // --- 表示モード用の小さな部品 ---
 const DisplayGroup = ({ title, fields }) => (
     <Box sx={{ mb: 3 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>{title}</Typography>
         <Grid container spacing={2}>
             {fields.map(field => (
-                <Grid item xs={12} sm={field.sm || 4} key={field.label}>
+                // ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼
+                <Grid size={{ xs: 12, sm: field.sm || 4 }} key={field.label}>
                     <Typography variant="caption" color="text.secondary">{field.label}</Typography>
                     <Typography variant="body1" sx={{ pl: 1 }}>{field.value || '未設定'}</Typography>
                 </Grid>
@@ -39,7 +41,8 @@ const RelatedOrgsSection = ({ isEditing, data, handleChange, handleSave, handleC
                 <Stack component="form" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                     <Grid container spacing={4}>
                         {/* === 左カラム: 緊急連絡先 === */}
-                        <Grid item xs={12} md={6}>
+                        {/* ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼ */}
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <EditGroup title="緊急連絡先">
                                 {[1, 2, 3].map(num => (
                                     <Paper key={num} variant="outlined" sx={{ p: 2 }}>
@@ -55,7 +58,8 @@ const RelatedOrgsSection = ({ isEditing, data, handleChange, handleSave, handleC
                         </Grid>
                         
                         {/* === 右カラム: それ以外 === */}
-                        <Grid item xs={12} md={6}>
+                        {/* ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼ */}
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <Stack spacing={4}>
                                 <EditGroup title="かかりつけ医療機関 1">
                                     <TextField size="small" name="medicalInstitution1_name" label="病院名" value={data?.medicalInstitution1_name || ''} onChange={handleChange} fullWidth />
@@ -85,7 +89,8 @@ const RelatedOrgsSection = ({ isEditing, data, handleChange, handleSave, handleC
                 // --- ★★★ 表示モード (2カラム) ★★★ ---
                 <Grid container spacing={14}>
                     {/* === 左カラム: 緊急連絡先 === */}
-                    <Grid item xs={12} md={6}>
+                    {/* ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼ */}
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <DisplayGroup title="緊急連絡先 1" fields={[
                             { label: '氏名', value: data?.emergencyContact1_name },
                             { label: '続柄', value: data?.emergencyContact1_relationship },
@@ -104,7 +109,8 @@ const RelatedOrgsSection = ({ isEditing, data, handleChange, handleSave, handleC
                     </Grid>
                     
                     {/* === 右カラム: それ以外 === */}
-                    <Grid item xs={12} md={6}>
+                    {/* ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼ */}
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <DisplayGroup title="かかりつけ医療機関 1" fields={[
                             { label: '病院名', value: data?.medicalInstitution1_name },
                             { label: '電話番号', value: data?.medicalInstitution1_phone },

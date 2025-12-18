@@ -21,9 +21,9 @@ import {
   Divider,
 } from '@mui/material';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase'; // ⇐ パスを確認・修正してください
+import { db } from '@/firebase'; // パスを修正 (@を使用)
 import { addMonths, format, getYear, getMonth } from 'date-fns';
-import useRetentionRate from '../../hooks/useRetentionRate'; // ⇐ パスを確認・修正してください
+import useRetentionRate from '@/hooks/useRetentionRate'; // パスを修正 (@を使用)
 
 // --- ヘルパー関数群 ---
 const formatDate = (timestamp) => {
@@ -39,7 +39,6 @@ const getFiscalYear = (date) => {
 };
 
 const getStatusInfo = (client) => {
-  // (この関数は変更なしなので、前回のコードのままです)
   const { status, employmentDate, completionDate, retirementDate } = client;
   switch (status) {
     case 'completed':
@@ -89,11 +88,6 @@ const ClientCompletedListPage = () => {
         const querySnapshot = await getDocs(q);
         const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // ▼▼▼▼▼ ここから追加 ▼▼▼▼▼
-        console.log("【デバッグ】取得したドキュメント数:", querySnapshot.docs.length);
-        console.log("【デバッグ】取得したデータ:", clientsData);
-        // ▲▲▲▲▲ ここまで追加 ▲▲▲▲▲
-
         setTargetClients(clientsData);
       } catch (error) {
         console.error("対象者のデータ取得に失敗しました:", error);
@@ -103,7 +97,8 @@ const ClientCompletedListPage = () => {
     };
     fetchTargetClients();
   }, []);
-  // 年度選択の選択肢を生成 (例: 2022年度から現在の年度まで)
+
+  // 年度選択の選択肢を生成
   const yearOptions = [];
   const startYear = 2022; // 事業開始年度
   const currentYear = getFiscalYear(new Date());
@@ -114,14 +109,13 @@ const ClientCompletedListPage = () => {
   return (
     <Container maxWidth="xl">
       <Box>
-        
         <Grid container spacing={3} sx={{ mt: 2 }}>
           {/* 左カラム */}
-          <Grid item xs={12} md={8}>
-            {/* (テーブル部分は変更なしなので、前回のコードのままです) */}
+          {/* ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼ */}
+          <Grid size={{ xs: 12, md: 8 }}>
             <Typography variant="h6" component="h2" gutterBottom>対象者リスト</Typography>
             <Paper>
-              <TableContainer sx={{ maxHeight: 600 }}> {/* テーブルの高さ制限とスクロール */}
+              <TableContainer sx={{ maxHeight: 600 }}>
                 <Table stickyHeader>
                   <TableHead>
                     <TableRow>
@@ -154,7 +148,8 @@ const ClientCompletedListPage = () => {
           </Grid>
           
           {/* 右カラム: 就労定着率ダッシュボード */}
-          <Grid item xs={12} md={4}>
+          {/* ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼ */}
+          <Grid size={{ xs: 12, md: 4 }}>
             <Typography variant="h6" component="h2" gutterBottom>就労定着率</Typography>
             <Paper sx={{ p: 2 }}>
               <Stack spacing={2}>

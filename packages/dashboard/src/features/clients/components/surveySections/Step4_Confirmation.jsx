@@ -1,16 +1,16 @@
-// Step4_Confirmation.jsx (省略なし・完全版)
+// Step4_Confirmation.jsx (CSSプロパティ名修正済み)
 
 import React from 'react';
 import { Box, Button, Typography, Paper, Divider, CircularProgress, GlobalStyles } from '@mui/material';
 
-// ★★★ レイアウトを見やすい縦一列に戻し、印刷用にスタイルを微調整 ★★★
+// レイアウトを見やすい縦一列に戻し、印刷用にスタイルを微調整
 const InfoRow = ({ label, value }) => (
   <Box sx={{
     display: 'flex',
-    py: 1, // 画面上での行間
+    py: 1,
     borderBottom: '1px solid #eee',
     '@media print': {
-      py: 0.3, // ★印刷の時だけ行間を詰める！
+      py: 0.3,
       borderBottom: '1px solid #ccc',
     }
   }}>
@@ -18,17 +18,17 @@ const InfoRow = ({ label, value }) => (
       width: '150px',
       flexShrink: 0,
       '@media print': {
-        color: '#000 !important', // ★印刷時はラベルも黒文字に！
-        fontSize: '9pt', // 印刷用に少し文字を小さく
+        color: '#000 !important',
+        fontSize: '9pt',
       }
     }}>
       {label}
     </Typography>
     <Typography variant="body1" sx={{
       fontWeight: 'medium',
-      whiteSpace: 'pre-wrap', // ★ valueが長い時に改行を有効にする
+      whiteSpace: 'pre-wrap',
       '@media print': {
-        fontSize: '10pt', // 印刷用に少し文字を小さく
+        fontSize: '10pt',
       }
     }}>
       {value || '未入力'}
@@ -38,16 +38,14 @@ const InfoRow = ({ label, value }) => (
 
 const Step4_Confirmation = ({ formData, prevStep, handleSubmit, setStep, isSubmitting }) => {
   
-  // (handlePrint関数は変更なし)
   const handlePrint = () => {
     const originalTitle = document.title;
     document.title = formData.fullName ? `${formData.fullName}様_見学アンケート` : '見学アンケート';
     window.print();
-    // 少し待ってからタイトルを戻す
     setTimeout(() => { document.title = originalTitle; }, 500);
   };
 
-  // --- ★★★ 表示用のデータ変換ヘルパー (フラット構造対応) ★★★ ---
+  // 表示用のデータ変換ヘルパー
   const calculateAge = (d) => d ? `${new Date().getFullYear() - new Date(d).getFullYear()}歳` : '';
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('ja-JP') : '';
   const genderMap = { male: '男性', female: '女性', other: 'その他' };
@@ -106,7 +104,8 @@ const Step4_Confirmation = ({ formData, prevStep, handleSubmit, setStep, isSubmi
             textShadow: 'none !important',
           },
           'body, #root': { margin: 0, padding: 0, background: 'white' },
-          'body': { '-webkit-print-color-adjust': 'exact', 'print-color-adjust': 'exact' }
+          // ▼▼▼ 修正箇所: ケバブケースをキャメルケースに変更 ▼▼▼
+          'body': { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }
         }
       }} />
       <Typography variant="h5" sx={{ '@media print': { display: 'none' } }}>ステップ4：入力内容のご確認</Typography>
@@ -130,7 +129,7 @@ const Step4_Confirmation = ({ formData, prevStep, handleSubmit, setStep, isSubmi
           <InfoRow label="メールアドレス" value={formData.email} />
         </Box>
 
-        {/* --- 福祉情報セクション (フラットなデータを表示するように修正) --- */}
+        {/* --- 福祉情報セクション --- */}
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, '@media print': { display: 'none' } }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>福祉関連情報</Typography>
@@ -143,7 +142,7 @@ const Step4_Confirmation = ({ formData, prevStep, handleSubmit, setStep, isSubmi
           <InfoRow label="自立支援医療" value={selfSupportMedicalMap[formData.selfSupportMedical]} />
         </Box>
 
-        {/* --- 背景・意向セクション (フラットなデータを表示するように修正) --- */}
+        {/* --- 背景・意向セクション --- */}
         <Box>
            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, '@media print': { display: 'none' } }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>背景・ご意向</Typography>
@@ -168,7 +167,7 @@ const Step4_Confirmation = ({ formData, prevStep, handleSubmit, setStep, isSubmi
         </Box>
       </Paper>
 
-      {/* --- 下部のボタンエリア (変更なし) --- */}
+      {/* --- 下部のボタンエリア --- */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, '@media print': { display: 'none' } }}>
         <Button onClick={prevStep} disabled={isSubmitting}>ステップ3へ戻る</Button>
         <Box>

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+// src/features/clients/ClientDetailPage.jsx
+
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/index.js";
-import { useAuth } from '../auth/context/AuthContext.jsx';
+import { useAuth } from '@/features/auth/context/AuthContext.jsx';
 import {
   Paper, Typography, Box, List, ListItem, ListItemButton, ListItemText,
   IconButton, Button, CircularProgress, Stack, Dialog, DialogTitle, DialogContent
@@ -11,21 +13,33 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import PostAddIcon from '@mui/icons-material/PostAdd';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import BlockIcon from '@mui/icons-material/Block';
+import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
+
+// カスタムフック
+import { useClientUpdater } from '../../hooks/useClientUpdater';
+import { useActivityLog } from '@/hooks/useActivityLog';
 
 // モーダルコンポーネント
 import SurveyRequestModal from "./components/SurveyRequestModal";
 import ScheduleModal from "./components/ScheduleModal";
+import EmploymentInfoModal from './components/EmploymentInfoModal.jsx';
+import LostReasonModal from './components/LostReasonModal.jsx';
+import StatusChangeModal from './components/StatusChangeModal.jsx';
 
-// 各セクションのコンポーネント
+// セクションコンポーネント
 import BasicInfoSection from './components/BasicInfoSection.jsx';
 import WelfareContractSection from './components/WelfareContractSection.jsx';
 import RelatedOrgsSection from './components/RelatedOrgsSection.jsx';
 import HealthStatusSection from './components/HealthStatusSection.jsx';
 import ActivityLogList from './components/ActivityLogList.jsx';
 import ActivityLogForm from './components/ActivityLogForm.jsx';
+import AttendancePlanner from './components/AttendancePlanner.jsx';
 
 const detailMenu = [
   { id: 'basic', label: '基本情報' },
+  { id: 'plan', label: '利用計画' },
   { id: 'activity', label: '活動記録' },
   { id: 'welfareContract', label: '福祉・契約' },
   { id: 'relatedOrgs', label: '関係機関' },
@@ -37,7 +51,8 @@ function ClientDetailPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
-  // --- Stateの定義 ---
+  const { saveLog, isSaving: isSavingLog } = useActivityLog();
+
   const [selectedMenu, setSelectedMenu] = useState('basic');
   const [clientData, setClientData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,42 +63,43 @@ function ClientDetailPage() {
   const [openScheduleModal, setOpenScheduleModal] = useState(false);
   const [openLogModal, setOpenLogModal] = useState(false);
 
+  const [isEmploymentModalOpen, setIsEmploymentModalOpen] = useState(false);
+  const [isLostModalOpen, setIsLostModalOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+
   const surveyUrl = `${window.location.origin}/survey/${clientId}`;
 
-  // --- データ取得 ---
-  useEffect(() => {
+  const fetchClientData = useCallback(async () => {
     if (!clientId) {
       setLoading(false);
       return;
     }
+    setLoading(true);
+    try {
+      const docRef = doc(db, 'clients', clientId);
+      const docSnap = await getDoc(docRef);
 
-    const fetchClientData = async () => {
-      setLoading(true);
-      try {
-        console.log('データの取得を開始します。ID:', clientId);
-        const docRef = doc(db, 'clients', clientId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = { id: docSnap.id, ...docSnap.data() };
-          console.log('データが見つかりました:', data);
-          setClientData(data);
-          setEditData(data); // 編集用のデータも初期化
-        } else {
-          console.log("ドキュメントが見つかりませんでした。");
-          navigate('/clients'); // データがない場合は一覧に戻す
-        }
-      } catch (error) {
-        console.error("データ取得中にエラーが発生しました:", error);
-      } finally {
-        setLoading(false);
+      if (docSnap.exists()) {
+        const data = { id: docSnap.id, ...docSnap.data() };
+        setClientData(data);
+        setEditData(data);
+      } else {
+        console.log("ドキュメントが見つかりませんでした。");
+        navigate('/clients');
       }
-    };
-
-    fetchClientData();
+    } catch (error) {
+      console.error("データ取得中にエラーが発生しました:", error);
+    } finally {
+      setLoading(false);
+    }
   }, [clientId, navigate]);
 
-  // --- 編集・保存・キャンセル処理 ---
+  const { graduateClient, loseClient } = useClientUpdater(fetchClientData);
+
+  useEffect(() => {
+    fetchClientData();
+  }, [fetchClientData]);
+
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditData(prev => ({ ...prev, [name]: value }));
@@ -93,7 +109,7 @@ function ClientDetailPage() {
     try {
       const docRef = doc(db, "clients", clientId);
       await updateDoc(docRef, { ...dataToSave, updatedAt: serverTimestamp() });
-      setClientData(dataToSave); // 画面表示を即時更新
+      setClientData(dataToSave);
       setIsEditing(false);
     } catch (error) {
       console.error("更新エラー:", error);
@@ -101,63 +117,92 @@ function ClientDetailPage() {
   };
   
   const handleCancelEdit = () => {
-    setEditData(clientData); // 変更を元に戻す
+    setEditData(clientData);
     setIsEditing(false);
   };
 
-  // --- 活動記録を保存する関数 ---
   const handleSaveLog = async (logData) => {
-    if (!clientId || !currentUser) {
-      alert("エラー: ログイン情報が見つかりません。");
-      return;
+    if (!clientId) {
+      alert("エラー: クライアントIDが見つかりません。");
+      return { success: false };
     }
-    try {
-      const logsRef = collection(db, 'clients', clientId, 'activity_logs');
-      await addDoc(logsRef, {
-        ...logData,
-        createdAt: serverTimestamp(),
-        staffUid: currentUser.uid,
-        staffName: currentUser.staffName || currentUser.displayName, // staffNameがなければdisplayNameを使う
-      });
+    const result = await saveLog(clientId, logData);
+    if (result && result.success) {
       setOpenLogModal(false);
+    } else {
+      alert("保存できませんでした: " + (result?.error || "不明なエラー"));
+    }
+    return result;
+  };
+
+  const handleConfirmEmployment = async (data) => {
+    await graduateClient(clientId, data);
+    setIsEmploymentModalOpen(false);
+  };
+
+  const handleConfirmLost = async (reason, details) => {
+    await loseClient(clientId, { 
+      reason, 
+      details, 
+      currentStatus: clientData?.status 
+    });
+    setIsLostModalOpen(false);
+  };
+
+  const handleUpdateStatus = async (newStatus) => {
+    if (!clientId) return;
+    try {
+      await updateDoc(doc(db, "clients", clientId), { 
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      setClientData(prev => ({ ...prev, status: newStatus }));
     } catch (error) {
-      console.error("活動記録の保存に失敗:", error);
-      alert("エラーが発生しました。記録を保存できませんでした。");
+      console.error("ステータス更新エラー:", error);
+      alert("更新に失敗しました");
     }
   };
 
-  // --- レンダリング前のチェック ---
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
   }
 
-  // データがない場合は何も表示しない（useEffectでリダイレクトされるはず）
   if (!clientData) {
     return null;
   }
 
   const currentData = isEditing ? editData : clientData;
 
-  // --- JSXの返却 ---
   return (
     <>
       <Paper sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}>
-        {/* ヘッダー部分 */}
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
           <IconButton onClick={() => navigate(-1)}><ArrowBackIcon /></IconButton>
-          <Typography variant="h6" sx={{ ml: 2, flexGrow: 1 }}>{clientData?.name}</Typography>
+          <Typography variant="h6" sx={{ ml: 2, flexGrow: 1 }}>
+            {clientData?.name} 
+            <Typography component="span" variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
+              ({clientData?.status})
+            </Typography>
+          </Typography>
 
           <Stack direction="row" spacing={1}>
+            <Button variant="outlined" color="success" startIcon={<CheckCircleIcon />} onClick={() => setIsEmploymentModalOpen(true)}>
+              就職卒業
+            </Button>
+            <Button variant="outlined" color="error" startIcon={<BlockIcon />} onClick={() => setIsLostModalOpen(true)}>
+              利用終了
+            </Button>
+            <Button variant="outlined" startIcon={<PublishedWithChangesIcon />} onClick={() => setIsStatusModalOpen(true)}>
+              ステータス変更
+            </Button>
+            
             <Button variant="contained" color="primary" startIcon={<PostAddIcon />} onClick={() => setOpenLogModal(true)}>
               活動記録を追加
             </Button>
             <Button
               variant="outlined"
               startIcon={<CalendarMonthIcon />}
-              onClick={() => {
-                console.log('日程管理ボタンがクリックされました！');
-                setOpenScheduleModal(true);
-              }}
+              onClick={() => setOpenScheduleModal(true)}
             >
               日程管理
             </Button>
@@ -168,9 +213,7 @@ function ClientDetailPage() {
           </Stack>
         </Box>
 
-        {/* メインコンテンツ部分 */}
         <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-          {/* 左メニュー */}
           <Box sx={{ width: 240, borderRight: 1, borderColor: 'divider', flexShrink: 0 }}>
             <List>
               {detailMenu.map(item => (
@@ -182,9 +225,9 @@ function ClientDetailPage() {
               ))}
             </List>
           </Box>
-          {/* 右コンテンツエリア */}
           <Box sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
             {selectedMenu === 'basic' && ( <BasicInfoSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}
+            {selectedMenu === 'plan' && ( <AttendancePlanner clientId={clientId} /> )}
             {selectedMenu === 'activity' && ( <ActivityLogList clientId={clientId} /> )}
             {selectedMenu === 'welfareContract' && ( <WelfareContractSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}
             {selectedMenu === 'relatedOrgs' && ( <RelatedOrgsSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}
@@ -193,10 +236,8 @@ function ClientDetailPage() {
         </Box>
       </Paper>
 
-      {/* モーダル呼び出しエリア */}
       <SurveyRequestModal open={openSurveyModal} onClose={() => setOpenSurveyModal(false)} surveyUrl={surveyUrl} />
       
-      {/* ScheduleModalはclientDataが存在する場合のみレンダリング */}
       {clientData && (
         <ScheduleModal
           open={openScheduleModal}
@@ -206,16 +247,33 @@ function ClientDetailPage() {
         />
       )}
 
-      {/* 活動記録追加用モーダル */}
-      <Dialog open={openLogModal} onClose={() => setOpenLogModal(false)} fullWidth maxWidth="sm">
+      <Dialog open={openLogModal} onClose={() => setOpenLogModal(false)} fullWidth maxWidth="md">
         <DialogTitle>活動記録の追加</DialogTitle>
         <DialogContent sx={{ pt: '16px !important' }}>
           <ActivityLogForm
             onSubmit={handleSaveLog}
             onCancel={() => setOpenLogModal(false)}
+            isSaving={isSavingLog}
           />
         </DialogContent>
       </Dialog>
+
+      <EmploymentInfoModal 
+        open={isEmploymentModalOpen} 
+        onClose={() => setIsEmploymentModalOpen(false)} 
+        onSubmit={handleConfirmEmployment}
+      />
+      <LostReasonModal 
+        open={isLostModalOpen} 
+        onClose={() => setIsLostModalOpen(false)} 
+        onSubmit={handleConfirmLost} 
+      />
+      <StatusChangeModal 
+        open={isStatusModalOpen} 
+        onClose={() => setIsStatusModalOpen(false)} 
+        currentStatus={clientData?.status}
+        onUpdate={handleUpdateStatus}
+      />
     </>
   );
 }

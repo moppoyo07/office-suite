@@ -1,201 +1,262 @@
-import { useState, useEffect, useMemo } from 'react'; // ★ 1. useMemo をインポート
-import { useNavigate } from 'react-router-dom';
-import {
-  Box,
-  Typography,
-  Paper,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  TextField,    // ★ 2. UI部品をインポート
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-  Grid
+// src/features/clients/AllClientsListPage.jsx
+
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, Paper, Typography, TextField, InputAdornment, 
+  Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
-import { db } from '@/firebase/index.js';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { subYears } from 'date-fns';
+import { Search } from '@mui/icons-material';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { db } from '@/firebase/index';
+import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { CLIENT_STATUS, STATUS_CONFIG } from '@/constants/clientStatus';
 
-// 日本語翻訳マップ (変更なし)
-const statusMap = {
-  'lead-new': { label: '新規問合せ', color: 'primary' },
-  'lead-consulting': { label: '相談・見学', color: 'info' },
-  'lead-trial': { label: '体験利用', color: 'secondary' },
-  'contract-prep': { label: '契約準備中', color: 'warning' },
-  'client-active': { label: '利用中', color: 'success' },
-  'closed-lost': { label: 'ロスト', color: 'error' },
-  'completed': { label: '完了', color: 'default' },
-};
-const getStatusChip = (status) => {
-  const statusInfo = statusMap[status] || { label: status, color: 'default' };
-  return <Chip label={statusInfo.label} color={statusInfo.color} size="small" />;
+// 色定義（なければデフォルト色を使用）
+const STATUS_COLORS = {
+  [CLIENT_STATUS.INQUIRY]:      { bg: '#06b6d4', text: '#fff' }, // Cyan
+  [CLIENT_STATUS.INTERVIEW]:    { bg: '#3b82f6', text: '#fff' }, // Blue
+  [CLIENT_STATUS.TRIAL]:        { bg: '#8b5cf6', text: '#fff' }, // Violet
+  [CLIENT_STATUS.PRE_CONTRACT]: { bg: '#f59e0b', text: '#fff' }, // Amber
+  [CLIENT_STATUS.ACTIVE_ONSITE]:{ bg: '#10b981', text: '#fff' }, // Emerald (Green)
+  [CLIENT_STATUS.ACTIVE_REMOTE]:{ bg: '#14b8a6', text: '#fff' }, // Teal
+  [CLIENT_STATUS.COMPLETED]:    { bg: '#6366f1', text: '#fff' }, // Indigo
 };
 
-function AllClientsListPage() {
-  const [allClients, setAllClients] = useState([]); // ★ 3. Firestoreから取得した全データ保持用
-  const [loading, setLoading] = useState(true);
+const LOST_PHASE_LABELS = {
+  [CLIENT_STATUS.INQUIRY]: "問合せロスト",
+  [CLIENT_STATUS.INTERVIEW]: "見学ロスト",
+  [CLIENT_STATUS.TRIAL]: "体験ロスト",
+  [CLIENT_STATUS.PRE_CONTRACT]: "準備中ロスト",
+  [CLIENT_STATUS.ACTIVE_ONSITE]: "利用中退所",
+  [CLIENT_STATUS.ACTIVE_REMOTE]: "利用中退所",
+  [CLIENT_STATUS.COMPLETED]: "定着後終了",
+};
+
+const LOST_REASON_TRANSLATIONS = {
+  'other': 'その他',
+  'details_mismatch': '条件不一致',
+  'price': '料金・費用',
+  'distance': '通所困難',
+  'atmosphere': '雰囲気',
+  'health': '体調不良',
+  'employed': '就職決定',
+  'transferred': '他事業所へ',
+  'expired': '期間満了',
+  'drop_out': '途中退所',
+};
+
+export const AllClientsListPage = () => {
+  const [clients, setClients] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all'); 
   const navigate = useNavigate();
 
-  // ★ 4. フィルターの状態を管理する state
-  const [statusFilter, setStatusFilter] = useState(''); // ステータスフィルター
-  const [nameFilter, setNameFilter] = useState('');     // 名前検索フィルター
-
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const oneYearAgo = subYears(new Date(), 1);
-        const clientsRef = collection(db, 'clients');
-        const q = query(
-          clientsRef,
-          where('createdAt', '>=', oneYearAgo),
-          orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        const clientsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setAllClients(clientsData); // 取得したデータを保持
+    const q = query(collection(db, 'clients'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const clientsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        inquiryDate: doc.data().inquiryDate?.toDate() || null,
+        updatedAt: doc.data().updatedAt?.toDate() || null,
+      }));
+      clientsData.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      setClients(clientsData);
+    });
 
-      } catch (error) {
-        console.error("利用者データの取得に失敗しました:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchClients();
+    return () => unsubscribe();
   }, []);
 
-  const handleRowClick = (clientId) => {
-    navigate(`/clients/${clientId}`);
-  };
-
-  // ★ 5. フィルターされたクライアントリストを計算する
-  const filteredClients = useMemo(() => {
-    let clients = [...allClients];
-
-    // ステータスで絞り込み
-    if (statusFilter) {
-      clients = clients.filter(client => client.status === statusFilter);
-    }
-
-    // 名前で絞り込み (部分一致)
-    if (nameFilter) {
-      clients = clients.filter(client => 
-        (client.name && client.name.includes(nameFilter)) || 
-        (client.nameKana && client.nameKana.includes(nameFilter)) // カナでも検索
+  // ★ステータスチップ（色付き）
+  const renderStatusChip = (row) => {
+    const status = row.status;
+    
+    // ロスト（終了）の場合
+    if (status === CLIENT_STATUS.CLOSED) {
+      const lostPhase = row.lostAtPhase;
+      const label = LOST_PHASE_LABELS[lostPhase] || '利用終了';
+      return (
+        <Chip 
+          label={label} 
+          size="small" 
+          variant="outlined" // ロストはあえて枠線のみにして区別
+          sx={{ 
+            color: '#ef4444', 
+            borderColor: '#ef4444',
+            fontWeight: 'bold',
+            bgcolor: 'rgba(239, 68, 68, 0.05)'
+          }} 
+        />
       );
     }
 
-    return clients;
-  }, [allClients, statusFilter, nameFilter]); // これらの値が変わった時だけ再計算
+    // 定着支援（Follow-up）の特別扱い
+    if (status.startsWith('follow-up')) {
+      // "follow-up-m1" -> "1ヶ月目" のように見やすく
+      const month = status.replace('follow-up-m', '');
+      return (
+        <Chip 
+          label={`定着支援 ${month}`} 
+          size="small" 
+          sx={{ 
+            bgcolor: '#ec4899', // Pink
+            color: '#fff',
+            fontWeight: 'bold'
+          }} 
+        />
+      );
+    }
 
-
-  if (loading) {
+    // 通常ステータス
+    const config = STATUS_CONFIG[status];
+    const colorStyle = STATUS_COLORS[status] || { bg: '#64748b', text: '#fff' }; // デフォルトGrey
+    
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress />
-      </Box>
+      <Chip 
+        label={config?.label || status} 
+        size="small" 
+        sx={{ 
+          bgcolor: colorStyle.bg, 
+          color: colorStyle.text,
+          fontWeight: 'bold',
+          border: 'none'
+        }} 
+      />
     );
-  }
+  };
+
+  const renderReasonText = (row) => {
+    if (row.status !== CLIENT_STATUS.CLOSED) return '-';
+    if (row.lostReasonDetails && row.lostReasonDetails.trim() !== "") {
+      return (
+        <Typography variant="body2" sx={{ color: '#ef4444', maxWidth: 300 }} noWrap title={row.lostReasonDetails}>
+          {row.lostReasonDetails}
+        </Typography>
+      );
+    }
+    if (row.lostReason) {
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {LOST_REASON_TRANSLATIONS[row.lostReason] || row.lostReason}
+        </Typography>
+      );
+    }
+    return <Typography variant="caption" color="text.disabled">理由なし</Typography>;
+  };
+
+  const filteredClients = clients.filter((client) => {
+    if (searchText) {
+      const lowerText = searchText.toLowerCase();
+      const matchesName = client.name?.toLowerCase().includes(lowerText);
+      const matchesKana = client.nameKana?.includes(lowerText);
+      const matchesReason = client.lostReasonDetails?.toLowerCase().includes(lowerText);
+      if (!matchesName && !matchesKana && !matchesReason) return false;
+    }
+
+    if (filterStatus !== 'all') {
+      if (filterStatus.startsWith('lost_')) {
+        if (client.status !== CLIENT_STATUS.CLOSED) return false;
+        const targetPhase = filterStatus.replace('lost_', '');
+        return client.lostAtPhase === targetPhase;
+      } else {
+        return client.status === filterStatus;
+      }
+    }
+    return true;
+  });
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>利用者一覧</Typography>
-      
-      {/* ★ 6. フィルターUIのセクション */}
-     {/* ★★★ あなたのアイデアを採用した、最強のテーブルレイアウト版 ★★★ */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '16px 0' }}>
-          <tbody>
-            <tr>
-              {/* --- 1列目: 利用者名検索 --- */}
-              <td style={{ width: '45%' }}>
-                <TextField
-                  fullWidth
-                  label="利用者名で検索"
-                  variant="outlined"
-                  value={nameFilter}
-                  onChange={(e) => setNameFilter(e.target.value)}
-                />
-              </td>
+    <Box sx={{ height: '100%', width: '100%', p: 3 }}>
+      <Paper sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Typography variant="h6" fontWeight="bold">
+          全利用者リスト ({filteredClients.length}件)
+        </Typography>
 
-              {/* --- 2列目: ステータス絞り込み --- */}
-              <td style={{ width: '45%' }}>
-                <TextField
-                  fullWidth
-                  select
-                  label="ステータスで絞り込み"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  variant="outlined"
-                  InputLabelProps={{ shrink: true }} // ラベルは常に上に
-                >
-                  <MenuItem value=""><em>すべて</em></MenuItem>
-                  {Object.entries(statusMap).map(([key, { label }]) => (
-                    <MenuItem key={key} value={key}>{label}</MenuItem>
-                  ))}
-                </TextField>
-              </td>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>ステータス絞り込み</InputLabel>
+            <Select
+              value={filterStatus}
+              label="ステータス絞り込み"
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <MenuItem value="all">全て表示</MenuItem>
+              <MenuItem disabled sx={{ fontSize: '0.75rem', bgcolor: '#eee' }}>進行中</MenuItem>
+              {Object.entries(STATUS_CONFIG).map(([key, config]) => {
+                if (key === CLIENT_STATUS.CLOSED || key === CLIENT_STATUS.COMPLETED) return null;
+                return <MenuItem key={key} value={key}>{config.label}</MenuItem>;
+              })}
+              <MenuItem value={CLIENT_STATUS.COMPLETED}>{STATUS_CONFIG[CLIENT_STATUS.COMPLETED].label}</MenuItem>
+              <MenuItem disabled sx={{ fontSize: '0.75rem', bgcolor: '#eee' }}>終了・ロスト理由別</MenuItem>
+              {Object.entries(LOST_PHASE_LABELS).map(([phaseKey, label]) => (
+                <MenuItem key={`lost_${phaseKey}`} value={`lost_${phaseKey}`}>{label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-              {/* --- 3列目: クリアボタン --- */}
-              <td style={{ width: '10%' }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => {
-                    setNameFilter('');
-                    setStatusFilter('');
-                  }}
-                  sx={{ height: '56px' }}
-                >
-                  クリア
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          <TextField
+            size="small"
+            placeholder="氏名・理由で検索..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
       </Paper>
-      
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {filteredClients.length} 件の利用者情報が見つかりました。
-      </Typography>
-      
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="user list table">
-          <TableHead>{/* ... 変更なし ... */}</TableHead>
+
+      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
+        <Table stickyHeader size="medium">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold', bgcolor: '#1e1e1e', color: '#fff', width: '20%' }}>氏名</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', bgcolor: '#1e1e1e', color: '#fff', width: '15%' }}>ステータス</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', bgcolor: '#1e1e1e', color: '#fff', width: '35%' }}>理由・詳細</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', bgcolor: '#1e1e1e', color: '#fff', width: '15%' }}>問合せ日</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', bgcolor: '#1e1e1e', color: '#fff', width: '15%' }}>最終更新</TableCell>
+            </TableRow>
+          </TableHead>
           <TableBody>
-            {/* ★ 7. 表示するデータを filteredClients に変更 */}
-            {filteredClients.map((client) => (
-              <TableRow
-                key={client.id}
-                hover
-                onClick={() => handleRowClick(client.id)}
+            {filteredClients.map((row) => (
+              <TableRow 
+                key={row.id} 
+                hover 
+                onClick={() => navigate(`/clients/${row.id}`)}
                 sx={{ cursor: 'pointer' }}
               >
-                <TableCell component="th" scope="row">{client.name}</TableCell>
-                <TableCell>{getStatusChip(client.status)}</TableCell>
                 <TableCell>
-                  {client.status === 'closed-lost' ? (
-                    `[${statusMap[client.lostAtPhase]?.label || client.lostAtPhase}] ${client.lostReason || ''}`
-                  ) : ( '—' )}
+                  <Typography variant="body2" fontWeight="bold">{row.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">{row.nameKana}</Typography>
                 </TableCell>
-                <TableCell>{client.createdAt?.toDate().toLocaleDateString() || '不明'}</TableCell>
+                <TableCell>{renderStatusChip(row)}</TableCell>
+                <TableCell>{renderReasonText(row)}</TableCell>
+                <TableCell>{row.inquiryDate ? format(row.inquiryDate, 'yyyy/MM/dd') : '-'}</TableCell>
+                <TableCell>
+                  <Typography variant="caption" color="text.secondary">
+                    {row.updatedAt ? format(row.updatedAt, 'MM/dd HH:mm') : '-'}
+                  </Typography>
+                </TableCell>
               </TableRow>
             ))}
+            {filteredClients.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ py: 5, color: 'text.secondary' }}>
+                  条件に一致するデータが見つかりません
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
     </Box>
   );
-}
+};
 
 export default AllClientsListPage;

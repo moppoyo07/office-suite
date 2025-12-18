@@ -2,8 +2,9 @@ import { Grid, Stack, TextField, Typography, Box, Button } from '@mui/material';
 import { format } from 'date-fns';
 
 // データを安全に表示するためのヘルパーコンポーネント
+// ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼
 const DisplayItem = ({ label, value, sm, xs }) => (
-  <Grid item sm={sm} xs={xs || 12}>
+  <Grid size={{ xs: xs || 12, sm: sm }}>
     <Typography variant="caption" color="text.secondary">{label}</Typography>
     <Typography>{value || '未設定'}</Typography>
   </Grid>
@@ -52,16 +53,17 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
   // 編集モードのJSX
   const renderEditMode = () => (
     <Grid container spacing={2}>
-      <Grid item xs={12}>
+      {/* ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼ */}
+      <Grid size={{ xs: 12 }}>
         <TextField size="small" name="diagnosisName" label="診断名" value={data?.diagnosisName || ''} onChange={handleChange} fullWidth />
       </Grid>
-      <Grid item xs={12} sm={6}>
+      <Grid size={{ xs: 12, sm: 6 }}>
         <TextField size="small" name="disabilityHandbook" label="障害者手帳" value={data?.disabilityHandbook || ''} onChange={handleChange} fullWidth />
       </Grid>
-      <Grid item xs={12} sm={6}>
+      <Grid size={{ xs: 12, sm: 6 }}>
         <TextField size="small" name="recipientId" label="受給者証番号" value={data?.recipientId || ''} onChange={handleChange} fullWidth />
       </Grid>
-      <Grid item xs={12} sm={4}>
+      <Grid size={{ xs: 12, sm: 4 }}>
         <TextField 
           size="small" 
           name="contractDate" 
@@ -70,11 +72,10 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           value={data?.contractDate ? format(new Date(data.contractDate.seconds ? data.contractDate.toDate() : data.contractDate), 'yyyy-MM-dd') : ''} 
           onChange={handleChange} 
           fullWidth
-          // ★ 非推奨警告 修正点 1 ★
           slotProps={{ inputLabel: { shrink: true } }}
         />
       </Grid>
-      <Grid item xs={12} sm={4}>
+      <Grid size={{ xs: 12, sm: 4 }}>
         <TextField 
           size="small" 
           name="serviceStartDate" 
@@ -83,11 +84,10 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           value={data?.serviceStartDate ? format(new Date(data.serviceStartDate.seconds ? data.serviceStartDate.toDate() : data.serviceStartDate), 'yyyy-MM-dd') : ''} 
           onChange={handleChange} 
           fullWidth
-          // ★ 非推奨警告 修正点 2 ★
           slotProps={{ inputLabel: { shrink: true } }}
         />
       </Grid>
-      <Grid item xs={12} sm={4}>
+      <Grid size={{ xs: 12, sm: 4 }}>
         <TextField 
           size="small" 
           name="serviceEndDate" 
@@ -96,7 +96,6 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           value={data?.serviceEndDate ? format(new Date(data.serviceEndDate.seconds ? data.serviceEndDate.toDate() : data.serviceEndDate), 'yyyy-MM-dd') : ''} 
           onChange={handleChange} 
           fullWidth
-          // ★ 非推奨警告 修正点 3 ★
           slotProps={{ inputLabel: { shrink: true } }}
         />
       </Grid>

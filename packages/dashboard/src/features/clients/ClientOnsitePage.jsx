@@ -1,11 +1,11 @@
-// src/features/clients/ClientOnsitePage.jsx (修正済みの完成版)
-
 import { useState, useEffect, useCallback } from 'react';
 import { Box, CircularProgress, Grid, Paper, Typography } from '@mui/material';
 import { collection, getDocs, doc, updateDoc, query, where, addDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db, auth } from "@/firebase/index.js";
+import { useClientUpdater } from '../../hooks/useClientUpdater';
+
 import ClientCard from './ClientCard.jsx';
-import EmploymentDateModal from './components/EmploymentDateModal.jsx';
+import EmploymentInfoModal from './components/EmploymentInfoModal.jsx';
 import LostReasonModal from './components/LostReasonModal.jsx';
 import FollowUpModal from './components/FollowUpModal.jsx';
 
@@ -18,7 +18,7 @@ function ClientOnsitePage() {
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
   const [followUpTargetId, setFollowUpTargetId] = useState(null);
   const [isEmploymentModalOpen, setIsEmploymentModalOpen] = useState(false);
-  const [employmentTargetId, setEmploymentTargetId] = useState(null); // ★★★ ここの行末の 'v' を削除しました ★★★
+  const [employmentTargetId, setEmploymentTargetId] = useState(null);
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
@@ -30,8 +30,10 @@ function ClientOnsitePage() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchClients(); }, [fetchClients]);
+  const { graduateClient, loseClient } = useClientUpdater(fetchClients);
 
+  useEffect(() => { fetchClients(); }, [fetchClients]);
+  
   useEffect(() => {
     const q = query(collection(db, "clients"), where("status", "==", "closed-lost"), where("lostAtPhase", "==", "active_onsite"));
     const unsubscribe = onSnapshot(q, (snapshot) => { setRetirementCount(snapshot.size); }, (error) => { console.error("退所者数の取得に失敗しました:", error); });
@@ -45,24 +47,22 @@ function ClientOnsitePage() {
     } 
     catch (error) { console.error("ステータス更新エラー:", error); }
   }, [fetchClients]);
-  
+
   const handleOpenLostModal = useCallback((clientId, currentStatus) => {
     setLostTarget({ id: clientId, status: currentStatus });
     setIsLostModalOpen(true);
   }, []);
-  
+
   const handleConfirmLost = useCallback(async (reason, details) => {
     if (!lostTarget) return;
-    try {
-      await updateDoc(doc(db, "clients", lostTarget.id), { status: 'closed-lost', lostAtPhase: lostTarget.status, lostReason: reason, lostReasonDetails: details });
-      fetchClients();
-    } 
-    catch (error) { console.error("ロスト処理エラー:", error); }
-    finally {
-      setIsLostModalOpen(false);
-      setLostTarget(null);
-    }
-  }, [lostTarget, fetchClients]);
+    await loseClient(lostTarget.id, {
+      reason,
+      details,
+      currentStatus: lostTarget.status
+    });
+    setIsLostModalOpen(false);
+    setLostTarget(null);
+  }, [lostTarget, loseClient]);
 
   const handleOpenFollowUpModal = useCallback((clientId) => {
     setFollowUpTargetId(clientId);
@@ -81,27 +81,18 @@ function ClientOnsitePage() {
       setFollowUpTargetId(null);
     }
   }, [followUpTargetId]);
-  
+
   const handleComplete = useCallback((clientId) => {
     setEmploymentTargetId(clientId);
     setIsEmploymentModalOpen(true);
   }, []);
-  
-  const handleConfirmEmploymentDate = useCallback(async (employmentDate) => {
-    if (!employmentTargetId || !employmentDate) return;
-    try {
-      await updateDoc(doc(db, "clients", employmentTargetId), { 
-        status: 'follow-up-m1',
-        serviceStartDate: employmentDate 
-      });
-      fetchClients();
-    } 
-    catch (error) { console.error("就職日の更新エラー:", error); } 
-    finally { 
-      setIsEmploymentModalOpen(false); 
-      setEmploymentTargetId(null); 
-    }
-  }, [employmentTargetId, fetchClients]);
+
+  const handleConfirmEmployment = useCallback(async (employmentData) => {
+    if (!employmentTargetId || !employmentData) return;
+    await graduateClient(employmentTargetId, employmentData);
+    setIsEmploymentModalOpen(false);
+    setEmploymentTargetId(null);
+  }, [employmentTargetId, graduateClient]);
 
   if (loading) { return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>; }
 
@@ -109,7 +100,8 @@ function ClientOnsitePage() {
     <Box sx={{ p: 2, pb: 12 }}>
       <Grid container spacing={2}>
         {clients.map(client => (
-          <Grid item key={client.id} xs={12} sm={6} md={4} lg={3}>
+          // ▼▼▼ 修正: itemを削除し、sizeプロパティに変更 ▼▼▼
+          <Grid key={client.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
             <ClientCard
               client={client}
               onUpdateStatus={handleUpdateStatus}
@@ -127,10 +119,10 @@ function ClientOnsitePage() {
       </Paper>
       <LostReasonModal open={isLostModalOpen} onClose={() => setIsLostModalOpen(false)} onSubmit={handleConfirmLost} />
       <FollowUpModal open={isFollowUpModalOpen} onClose={() => setIsFollowUpModalOpen(false)} onSubmit={handleConfirmFollowUp} clientId={followUpTargetId} />
-      <EmploymentDateModal 
+      <EmploymentInfoModal 
         open={isEmploymentModalOpen} 
         onClose={() => setIsEmploymentModalOpen(false)} 
-        onSubmit={handleConfirmEmploymentDate} 
+        onSubmit={handleConfirmEmployment}
       />
     </Box>
   );
