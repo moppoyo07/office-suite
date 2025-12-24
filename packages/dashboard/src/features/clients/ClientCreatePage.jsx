@@ -13,7 +13,7 @@ function ClientCreatePage() {
     name: '',
     nameKana: '',
     phone: '', // ★★★ phoneNumber から phone に統一 ★★★
-    status: 'lead-new', // 初期ステータス
+    status: 'inquiry', // 初期ステータス
   });
 
   const handleChange = (e) => {

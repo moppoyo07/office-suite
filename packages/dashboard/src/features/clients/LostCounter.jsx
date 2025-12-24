@@ -8,10 +8,10 @@ import { CLIENT_STATUS, STATUS_CONFIG } from '@/constants/clientStatus';
 
 export const LostCounter = () => {
   const targetPhases = [
-    CLIENT_STATUS.INQUIRY,      // 新規問合せ
-    CLIENT_STATUS.INTERVIEW,    // 相談・見学
-    CLIENT_STATUS.TRIAL,        // 体験利用
-    CLIENT_STATUS.PRE_CONTRACT  // 契約準備中
+    CLIENT_STATUS.INQUIRY,
+    CLIENT_STATUS.INTERVIEW,
+    CLIENT_STATUS.TRIAL,
+    CLIENT_STATUS.PRE_CONTRACT
   ];
 
   const [stats, setStats] = useState({});
@@ -21,7 +21,7 @@ export const LostCounter = () => {
       try {
         const q = query(
           collection(db, 'clients'),
-          where('status', '==', CLIENT_STATUS.CLOSED)
+          where('status', '==', CLIENT_STATUS.CLOSED) 
         );
         const querySnapshot = await getDocs(q);
         
@@ -30,7 +30,21 @@ export const LostCounter = () => {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          const phase = data.lostAtPhase;
+          let phase = data.lostAtPhase;
+
+          if (phase === 'lead-new' || phase === '新規問合せ') {
+             phase = CLIENT_STATUS.INQUIRY;
+          }
+          if (phase === 'lead-consulting' || phase === '相談・見学') {
+             phase = CLIENT_STATUS.INTERVIEW;
+          }
+          if (phase === 'lead-trial' || phase === '体験利用') {
+             phase = CLIENT_STATUS.TRIAL;
+          }
+          if (phase === 'contract-prep' || phase === '契約準備中') {
+             phase = CLIENT_STATUS.PRE_CONTRACT;
+          }
+
           if (targetPhases.includes(phase)) {
             newStats[phase] = (newStats[phase] || 0) + 1;
           }
@@ -50,9 +64,9 @@ export const LostCounter = () => {
       sx={{ 
         mt: 2, 
         p: 2, 
-        border: '1px solid rgba(6, 182, 212, 0.7)', // Cyan枠線
+        border: '1px solid rgba(6, 182, 212, 0.7)',
         borderRadius: 2, 
-        bgcolor: 'rgba(22, 28, 36, 0.6)', // 黒透過背景
+        bgcolor: 'rgba(22, 28, 36, 0.6)',
         boxShadow: '0 0 10px rgba(6, 182, 212, 0.1)',
       }}
     >
@@ -71,7 +85,6 @@ export const LostCounter = () => {
       
       <Grid container spacing={2} textAlign="center">
         {targetPhases.map((phaseId) => (
-          // ★★★ 修正ポイント: item プロパティを削除し、xs={3} を size={{ xs: 3 }} に変更 ★★★
           <Grid key={phaseId} size={{ xs: 3 }}>
             <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 0.5 }}>
               {STATUS_CONFIG[phaseId]?.label || phaseId}
