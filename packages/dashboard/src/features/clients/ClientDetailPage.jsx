@@ -226,7 +226,16 @@ function ClientDetailPage() {
             </List>
           </Box>
           <Box sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
-            {selectedMenu === 'basic' && ( <BasicInfoSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}
+            {selectedMenu === 'basic' && ( 
+              <BasicInfoSection 
+              isEditing={isEditing} 
+              data={currentData} 
+              handleChange={handleEditChange} 
+              handleSave={handleSave} 
+              handleCancelEdit={handleCancelEdit}
+              setEditedData={setEditData}  /* ★ここを追加！ setEditDataを渡します */
+              /> 
+            )}
             {selectedMenu === 'plan' && ( <AttendancePlanner clientId={clientId} /> )}
             {selectedMenu === 'activity' && ( <ActivityLogList clientId={clientId} /> )}
             {selectedMenu === 'welfareContract' && ( <WelfareContractSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit}/> )}

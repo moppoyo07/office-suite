@@ -45,6 +45,7 @@ const ActivityLogForm = ({ initialData, onSubmit, onCancel, isSaving }) => {
             onChange={(e) => setType(e.target.value)}
           >
             {/* ★ご要望の項目を追加★ */}
+             <MenuItem value="inquiry" sx={{ color: '#5cf063ff', fontWeight: 'bold' }}>問合せ</MenuItem>
             <MenuItem value="tour" sx={{ color: '#0288d1', fontWeight: 'bold' }}>見学</MenuItem>
             <MenuItem value="trial" sx={{ color: '#0288d1', fontWeight: 'bold' }}>体験利用</MenuItem>
             <MenuItem value="contract_prep" sx={{ color: '#ed6c02', fontWeight: 'bold' }}>利用準備</MenuItem>

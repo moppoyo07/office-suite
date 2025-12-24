@@ -1,185 +1,289 @@
-// Step3_BackgroundAndIntent.jsx
-
 import React from 'react';
-import { Stack, Box, Typography, TextField, Button, RadioGroup, FormControlLabel, Radio, FormControl, FormLabel, Checkbox, FormGroup, Select, MenuItem, InputLabel } from '@mui/material';
+import { Grid, Stack, TextField, Typography, Box, Button, IconButton, MenuItem, Divider, Paper } from '@mui/material';
+import { format } from 'date-fns';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
-const Step3_BackgroundAndIntent = ({ formData, setFormData, handleChange, nextStep, prevStep }) => {
-
-  // --- ★★★ チェックボックス（複数選択）用の汎用ハンドラ ★★★ ---
-  // どのチェックボックスグループでも使えるように汎用化
-  const handleCheckboxChange = (groupName, itemName, isChecked) => {
-    const currentItems = formData[groupName] || [];
-    let newItems;
-    if (isChecked) {
-      newItems = [...currentItems, itemName];
-    } else {
-      newItems = currentItems.filter(item => item !== itemName);
+// 日付フォーマット関数
+const formatDate = (date) => {
+  try {
+    if (date && typeof date.toDate === 'function') {
+      return format(date.toDate(), 'yyyy/MM/dd');
     }
-    // setFormData を直接使って配列を更新
-    setFormData(prev => ({ ...prev, [groupName]: newItems }));
-  };
+    if (date) {
+      return format(new Date(date), 'yyyy/MM/dd');
+    }
+    return '';
+  } catch (error) {
+    return '';
+  }
+};
+
+// 交通手段の選択肢
+const TRANSPORT_TYPES = [
+  { value: 'public', label: '公共交通(電車/バス)' },
+  { value: 'private', label: '自家用車/バイク' },
+  { value: 'service', label: '事業所送迎' },
+  { value: 'walk', label: '徒歩/自転車' },
+];
+
+const BasicInfoSection = ({ isEditing, data, handleChange, handleSave, handleCancelEdit, setEditedData }) => {
   
-  // --- ネスト関連の古いハンドラはすべて削除 ---
-  // handleHowDidYouHearCheck → handleCheckboxChange に統合
-  // handleFutureActionsCheck → handleCheckboxChange に統合
-  // handleChangeNested → 不要なので削除
+  // --- 経路情報の操作ハンドラ (配列操作用) ---
+  
+  // 経路を追加
+  const handleAddRoute = () => {
+    const currentRoutes = data.commuteRoutes || [];
+    const newRoute = { type: 'public', company: '', from: '', to: '', cost: 0, costDiscounted: 0, note: '' };
+    // 親のstateを更新 (setEditedDataが使える前提、もしくはhandleChangeをハックする)
+    if(setEditedData) {
+        setEditedData({ ...data, commuteRoutes: [...currentRoutes, newRoute] });
+    }
+  };
+
+  // 経路を削除
+  const handleRemoveRoute = (index) => {
+    const currentRoutes = data.commuteRoutes || [];
+    const newRoutes = currentRoutes.filter((_, i) => i !== index);
+    if(setEditedData) {
+        setEditedData({ ...data, commuteRoutes: newRoutes });
+    }
+  };
+
+  // 経路の中身を変更
+  const handleRouteChange = (index, field, value) => {
+    const currentRoutes = [...(data.commuteRoutes || [])];
+    currentRoutes[index] = { ...currentRoutes[index], [field]: value };
+    if(setEditedData) {
+        setEditedData({ ...data, commuteRoutes: currentRoutes });
+    }
+  };
+
+  // 往復日額の合計計算
+  const calculateDailyTotal = () => {
+    const routes = data?.commuteRoutes || [];
+    // 割引後運賃があればそれを、なければ通常運賃を使用。往復なので×2
+    const oneWayTotal = routes.reduce((sum, r) => sum + Number(r.costDiscounted || r.cost || 0), 0);
+    return oneWayTotal * 2;
+  };
+
+  // --- 表示モード (View Mode) ---
+  const renderDisplayMode = () => (
+    <Stack spacing={4}>
+      {/* 基本情報 */}
+      <Box>
+        <Typography variant="subtitle1" gutterBottom sx={{ borderLeft: '4px solid #1976d2', pl: 1, mb: 2 }}>
+          基本情報
+        </Typography>
+        <Grid container spacing={2} rowSpacing={3}>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="caption" color="text.secondary">氏名</Typography>
+            <Typography>{data?.name || '未設定'}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="caption" color="text.secondary">フリガナ</Typography>
+            <Typography>{data?.nameKana || '未設定'}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="caption" color="text.secondary">生年月日</Typography>
+            <Typography>{formatDate(data?.birthDate)}</Typography>
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <Typography variant="caption" color="text.secondary">性別</Typography>
+            <Typography>{data?.gender || '未設定'}</Typography>
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <Typography variant="caption" color="text.secondary">血液型</Typography>
+            <Typography>{data?.bloodType || '未設定'}</Typography>
+          </Grid>
+          <Grid item xs={12}>
+            <Typography variant="caption" color="text.secondary">住所</Typography>
+            <Typography>{(data?.postalCode ? `〒${data.postalCode} ` : '') + (data?.address || '未設定')}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="caption" color="text.secondary">電話番号</Typography>
+            <Typography>{data?.phone || '未設定'}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="caption" color="text.secondary">携帯電話</Typography>
+            <Typography>{data?.mobilePhone || '未設定'}</Typography>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* 通所経路・助成設定 (ここを大幅拡張) */}
+      <Box>
+        <Typography variant="subtitle1" gutterBottom sx={{ borderLeft: '4px solid #ed6c02', pl: 1, mb: 2 }}>
+          通所経路・助成金設定
+        </Typography>
+        
+        {/* 経路リスト表示 */}
+        <Stack spacing={2} sx={{ mb: 3 }}>
+          {(data?.commuteRoutes && data.commuteRoutes.length > 0) ? (
+            data.commuteRoutes.map((route, index) => (
+              <Paper key={index} variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                <Grid container spacing={1}>
+                  <Grid item xs={12} sm={3}>
+                    <Typography variant="caption" color="text.secondary">手段・会社</Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {TRANSPORT_TYPES.find(t => t.value === route.type)?.label}
+                      {route.company && ` (${route.company})`}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="caption" color="text.secondary">区間</Typography>
+                    <Typography variant="body2">{route.from} ～ {route.to}</Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <Typography variant="caption" color="text.secondary">詳細・割引</Typography>
+                    <Typography variant="body2">{route.note || '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={2} sx={{ textAlign: 'right' }}>
+                    <Typography variant="caption" color="text.secondary">片道運賃</Typography>
+                    <Typography variant="body2">
+                      {route.costDiscounted ? (
+                         <span style={{ color: 'red' }}>¥{Number(route.costDiscounted).toLocaleString()}</span>
+                      ) : (
+                         `¥${Number(route.cost || 0).toLocaleString()}`
+                      )}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+            ))
+          ) : (
+            <Typography color="text.secondary">経路情報が登録されていません</Typography>
+          )}
+        </Stack>
+
+        {/* 金額サマリ */}
+        <Paper elevation={0} sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" color="text.secondary">往復日額 (実費合計)</Typography>
+              <Typography variant="h6">¥ {calculateDailyTotal().toLocaleString()}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" color="text.secondary">1ヶ月定期代 (比較用上限)</Typography>
+              <Typography variant="h6">
+                {data?.commuteMonthlyPass ? `¥ ${Number(data.commuteMonthlyPass).toLocaleString()}` : '-'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" color="text.secondary">行政認定単価 (廿日市等)</Typography>
+              <Typography variant="h6">
+                {data?.commuteAdminDayCost ? `¥ ${Number(data.commuteAdminDayCost).toLocaleString()}` : '-'}
+              </Typography>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Box>
+    </Stack>
+  );
+
+  // --- 編集モード (Edit Mode) ---
+  const renderEditMode = () => (
+    <Grid container spacing={4}>
+      {/* 左カラム：基本情報 */}
+      <Grid item xs={12} md={6}>
+        <Typography variant="subtitle1" gutterBottom sx={{ borderLeft: '4px solid #1976d2', pl: 1, mb: 2 }}>基本情報</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}><TextField size="small" name="name" label="氏名" value={data?.name || ''} onChange={handleChange} fullWidth /></Grid>
+          <Grid item xs={12} sm={6}><TextField size="small" name="nameKana" label="フリガナ" value={data?.nameKana || ''} onChange={handleChange} fullWidth /></Grid>
+          <Grid item xs={12} sm={6}><TextField size="small" name="birthDate" label="生年月日" type="date" value={data?.birthDate ? format(new Date(data.birthDate.seconds ? data.birthDate.toDate() : data.birthDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} /></Grid>
+          <Grid item xs={12} sm={3}><TextField size="small" name="gender" label="性別" value={data?.gender || ''} onChange={handleChange} fullWidth /></Grid>
+          <Grid item xs={12} sm={3}><TextField size="small" name="bloodType" label="血液型" value={data?.bloodType || ''} onChange={handleChange} fullWidth /></Grid>
+          <Grid item xs={12} sm={4}><TextField size="small" name="postalCode" label="郵便番号" value={data?.postalCode || ''} onChange={handleChange} fullWidth /></Grid>
+          <Grid item xs={12} sm={8}><TextField size="small" name="address" label="住所" value={data?.address || ''} onChange={handleChange} fullWidth /></Grid>
+          <Grid item xs={12} sm={6}><TextField size="small" name="phone" label="電話番号" value={data?.phone || ''} onChange={handleChange} fullWidth /></Grid>
+          <Grid item xs={12} sm={6}><TextField size="small" name="mobilePhone" label="携帯電話" value={data?.mobilePhone || ''} onChange={handleChange} fullWidth /></Grid>
+          <Grid item xs={12}><TextField size="small" name="email" label="メールアドレス" type="email" value={data?.email || ''} onChange={handleChange} fullWidth /></Grid>
+        </Grid>
+      </Grid>
+      
+      {/* 右カラム：通所経路 (リスト形式で編集) */}
+      <Grid item xs={12} md={6}>
+        <Typography variant="subtitle1" gutterBottom sx={{ borderLeft: '4px solid #ed6c02', pl: 1, mb: 2 }}>
+            通所経路・助成設定
+        </Typography>
+        
+        <Stack spacing={2}>
+            {/* 経路リスト編集 */}
+            {(data?.commuteRoutes || []).map((route, index) => (
+                <Paper key={index} variant="outlined" sx={{ p: 1.5, position: 'relative' }}>
+                    <IconButton 
+                        size="small" 
+                        onClick={() => handleRemoveRoute(index)}
+                        sx={{ position: 'absolute', top: 4, right: 4, color: 'error.main' }}
+                    >
+                        <DeleteIcon fontSize="small" />
+                    </IconButton>
+                    
+                    <Grid container spacing={2} sx={{ pr: 3 }}>
+                        <Grid item xs={6}>
+                            <TextField select fullWidth size="small" label="種別" value={route.type} onChange={(e)=>handleRouteChange(index, 'type', e.target.value)}>
+                                {TRANSPORT_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <TextField fullWidth size="small" label="会社・路線名" placeholder="例:広島バス" value={route.company} onChange={(e)=>handleRouteChange(index, 'company', e.target.value)} />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <TextField fullWidth size="small" label="出発" value={route.from} onChange={(e)=>handleRouteChange(index, 'from', e.target.value)} />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <TextField fullWidth size="small" label="到着" value={route.to} onChange={(e)=>handleRouteChange(index, 'to', e.target.value)} />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <TextField fullWidth size="small" type="number" label="通常運賃(片道)" value={route.cost} onChange={(e)=>handleRouteChange(index, 'cost', e.target.value)} />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <TextField fullWidth size="small" type="number" label="割引・適用運賃(片道)" placeholder="同額なら空欄" value={route.costDiscounted} onChange={(e)=>handleRouteChange(index, 'costDiscounted', e.target.value)} />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField fullWidth size="small" label="備考・割引詳細" placeholder="例:障害者割引あり、ICOCA使用" value={route.note} onChange={(e)=>handleRouteChange(index, 'note', e.target.value)} />
+                        </Grid>
+                    </Grid>
+                </Paper>
+            ))}
+
+            <Button 
+                startIcon={<AddCircleOutlineIcon />} 
+                variant="outlined" 
+                onClick={handleAddRoute}
+                sx={{ borderStyle: 'dashed' }}
+            >
+                経路を追加
+            </Button>
+
+            <Divider sx={{ my: 2 }} />
+
+            {/* 定期代・行政単価設定 */}
+            <Typography variant="body2" fontWeight="bold">助成金計算設定</Typography>
+            <Grid container spacing={2}>
+                 <Grid item xs={6}>
+                    <TextField fullWidth size="small" type="number" name="commuteMonthlyPass" label="1ヶ月定期代(比較用)" value={data?.commuteMonthlyPass || ''} onChange={handleChange} helperText="実費より安い場合に適用されます" />
+                 </Grid>
+                 <Grid item xs={6}>
+                    <TextField fullWidth size="small" type="number" name="commuteAdminDayCost" label="行政決定単価(日額)" value={data?.commuteAdminDayCost || ''} onChange={handleChange} helperText="廿日市市など固定単価の場合" />
+                 </Grid>
+            </Grid>
+        </Stack>
+      </Grid>
+    </Grid>
+  );
 
   return (
-    <>
-      <Typography variant="h5" component="h2" gutterBottom>
-        ステップ3：ご利用の背景・ご意向
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        あなたの状況や、希望について教えてください。
-      </Typography>
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-
-        {/* --- 1. 事業所を知った経緯 --- */}
-        <FormControl component="fieldset">
-          <FormLabel component="legend">事業所をどのような経緯でお知りになりましたか？（複数選択可）</FormLabel>
-          <FormGroup sx={{ mt: 1 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
-              {/* ▼▼▼ 汎用ハンドラを使うように修正 ▼▼▼ */}
-              <FormControlLabel control={<Checkbox checked={formData.howDidYouHear?.includes('homepage') || false} onChange={(e) => handleCheckboxChange('howDidYouHear', 'homepage', e.target.checked)} />} label="ホームページ" />
-              <FormControlLabel control={<Checkbox checked={formData.howDidYouHear?.includes('flyer') || false} onChange={(e) => handleCheckboxChange('howDidYouHear', 'flyer', e.target.checked)} />} label="チラシ・ポスター" />
-              <FormControlLabel control={<Checkbox checked={formData.howDidYouHear?.includes('hospital') || false} onChange={(e) => handleCheckboxChange('howDidYouHear', 'hospital', e.target.checked)} />} label="病院・クリニック" />
-              <FormControlLabel control={<Checkbox checked={formData.howDidYouHear?.includes('helloWork') || false} onChange={(e) => handleCheckboxChange('howDidYouHear', 'helloWork', e.target.checked)} />} label="ハローワーク" />
-              <FormControlLabel control={<Checkbox checked={formData.howDidYouHear?.includes('litalico') || false} onChange={(e) => handleCheckboxChange('howDidYouHear', 'litalico', e.target.checked)} />} label="LITALICO仕事ナビ" />
-              <FormControlLabel control={<Checkbox checked={formData.howDidYouHear?.includes('other') || false} onChange={(e) => handleCheckboxChange('howDidYouHear', 'other', e.target.checked)} />} label="その他" />
-            </Stack>
-          </FormGroup>
-          {/* ▼▼▼ 詳細入力欄もフラットなキーで管理 ▼▼▼ */}
-          {formData.howDidYouHear?.includes('other') &&
-            <TextField
-              size="small"
-              label="その他（具体的に）"
-              name="howDidYouHear_detail" // ★★★ name属性をフラットに！ ★★★
-              value={formData.howDidYouHear_detail || ''}
-              onChange={handleChange} // ★★★ 親のhandleChangeを使う！ ★★★
-              sx={{ mt: 1 }}
-            />
-          }
-        </FormControl>
-        
-        {/* --- 2. 現在の活動状況 --- */}
-        <FormControl component="fieldset" fullWidth>
-          <FormLabel component="legend">現在の活動状況を教えてください</FormLabel>
-          <RadioGroup 
-            name="currentSituation" 
-            value={formData.currentSituation || ''} 
-            onChange={handleChange}
-            sx={{ mt: 1 }}
-          >
-            <FormControlLabel value="none" control={<Radio />} label="特になし" />
-            <FormControlLabel value="working" control={<Radio />} label="在職中である" />
-            <FormControlLabel value="welfareService" control={<Radio />} label="福祉サービス利用中" />
-            <FormControlLabel value="inSchool" control={<Radio />} label="在学中である" />
-            {formData.currentSituation === 'inSchool' && 
-              <TextField size="small" label="学校名" name="schoolName" value={formData.schoolName || ''} onChange={handleChange} sx={{ mt: 1, mb: 1, ml: 4 }} />
-            }
-            <FormControlLabel value="visitingHospital" control={<Radio />} label="通院中" />
-            {/* ▼▼▼ 病院名もフラットなキーで管理 ▼▼▼ */}
-            {formData.currentSituation === 'visitingHospital' && 
-              <TextField 
-                size="small" 
-                label="病院名" 
-                name="primaryClinic_name" // ★★★ name属性をフラットに！ ★★★
-                value={formData.primaryClinic_name || ''} 
-                onChange={handleChange}  // ★★★ 親のhandleChangeを使う！ ★★★
-                sx={{ mt: 1, mb: 1, ml: 4 }} 
-              />
-            }
-            <FormControlLabel value="onLeave" control={<Radio />} label="休職中である" />
-            <FormControlLabel value="usingHelloWork" control={<Radio />} label="ハローワークに通っている" />
-            <FormControlLabel value="partTime" control={<Radio />} label="アルバイト" />
-            <FormControlLabel value="other" control={<Radio />} label="その他" />
-          </RadioGroup>
-        </FormControl>
-
-        {/* --- 3. 今後の希望 (変更なし) --- */}
-        <FormControl component="fieldset" fullWidth>
-          {/* ... (ここのセクションは元々フラットなので変更なし) ... */}
-        </FormControl>
-        
-        {/* --- 4. 今後取り組みたいこと --- */}
-        <FormControl component="fieldset">
-          <FormLabel component="legend">今後取り組みたいと考えていることがあれば教えて下さい（複数選択可）</FormLabel>
-          <FormGroup sx={{ mt: 1 }}>
-            <Stack direction="row" flexWrap="wrap">
-              {/* ▼▼▼ 汎用ハンドラを使うように修正 ▼▼▼ */}
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('apply') || false} onChange={(e) => handleCheckboxChange('futureActions', 'apply', e.target.checked)} />} label="求人への応募" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('research') || false} onChange={(e) => handleCheckboxChange('futureActions', 'research', e.target.checked)} />} label="企業研究" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('resume') || false} onChange={(e) => handleCheckboxChange('futureActions', 'resume', e.target.checked)} />} label="履歴書・職務経歴書の作成" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('training') || false} onChange={(e) => handleCheckboxChange('futureActions', 'training', e.target.checked)} />} label="委託訓練やスクール等でのスキルアップ" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('qualification') || false} onChange={(e) => handleCheckboxChange('futureActions', 'qualification', e.target.checked)} />} label="資格の取得" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('manner') || false} onChange={(e) => handleCheckboxChange('futureActions', 'manner', e.target.checked)} />} label="ビジネスマナーの向上" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('communication') || false} onChange={(e) => handleCheckboxChange('futureActions', 'communication', e.target.checked)} />} label="コミュニケーション力の向上" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('stamina') || false} onChange={(e) => handleCheckboxChange('futureActions', 'stamina', e.target.checked)} />} label="体力づくり" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('nothing') || false} onChange={(e) => handleCheckboxChange('futureActions', 'nothing', e.target.checked)} />} label="特にない・思いつかない" />
-              <FormControlLabel control={<Checkbox checked={formData.futureActions?.includes('other') || false} onChange={(e) => handleCheckboxChange('futureActions', 'other', e.target.checked)} />} label="その他" />
-            </Stack>
-          </FormGroup>
-           {/* ▼▼▼ 詳細入力欄もフラットなキーで管理 ▼▼▼ */}
-          {formData.futureActions?.includes('other') &&
-            <TextField
-              size="small"
-              label="その他（具体的に）"
-              name="futureActions_detail" // ★★★ name属性をフラットに！ ★★★
-              value={formData.futureActions_detail || ''}
-              onChange={handleChange} // ★★★ 親のhandleChangeを使う！ ★★★
-              sx={{ mt: 1, maxWidth: 400 }}
-            />
-          }
-        </FormControl>
-
-        {/* --- 5. 交通機関 (変更なし、ただしhandleSurveySubmitとキーを合わせる) --- */}
-        <FormControl component="fieldset">
-          <FormLabel component="legend">交通機関について</FormLabel>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1 }}>
-            {/* ★★★ handleSurveySubmitのキー名に合わせて修正 ★★★ */}
-            <TextField fullWidth label="最寄り駅" name="commuteRoute1_from" value={formData.commuteRoute1_from || ''} onChange={handleChange} />
-            <TextField fullWidth label="利用路線" name="commuteRoute1_line" value={formData.commuteRoute1_line || ''} onChange={handleChange} />
-            <TextField fullWidth label="片道運賃（円）" name="commuteTotalFare" type="number" value={formData.commuteTotalFare || ''} onChange={handleChange} />
-          </Stack>
-        </FormControl>
-                {/* --- 6. 同行者 --- */}
-        <FormControl component="fieldset" fullWidth>
-          <FormLabel component="legend">本日の同行者について</FormLabel>
-          <Select
-            name="companionType"
-            value={formData.companionType || ''}
-            onChange={handleChange}
-            sx={{ mt: 1, minWidth: 200 }}
-          >
-            <MenuItem value="self">本人のみ</MenuItem>
-            <MenuItem value="family">ご家族</MenuItem>
-            <MenuItem value="agency">支援機関</MenuItem>
-            <MenuItem value="other">その他</MenuItem>
-          </Select>
-          {formData.companionType === 'agency' && (
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 2 }}>
-              <TextField fullWidth label="支援機関名" name="companionAgencyName" value={formData.companionAgencyName || ''} onChange={handleChange} />
-              <TextField fullWidth label="担当者名" name="companionStaffName" value={formData.companionStaffName || ''} onChange={handleChange} />
-            </Stack>
-          )}
-        </FormControl>
-        <FormControl component="fieldset">
-          {/* ... (ここのセクションは元々フラットなので変更なし) ... */}
-        </FormControl>
-
-      </Box>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-        <Button onClick={prevStep}>
-          ステップ2へ戻る
-        </Button>
-        <Button variant="contained" onClick={nextStep}>
-          確認画面へ進む
-        </Button>
-      </Box>
-    </>
+    <Box>
+      {isEditing ? renderEditMode() : renderDisplayMode()}
+      {isEditing && (
+        <Stack direction="row" spacing={2} sx={{ mt: 3, justifyContent: 'flex-end' }}>
+            <Button variant="outlined" onClick={handleCancelEdit}>キャンセル</Button>
+            <Button variant="contained" onClick={() => handleSave(data)}>保存</Button>
+        </Stack>
+      )}
+    </Box>
   );
 };
 
-export default Step3_BackgroundAndIntent;
+export default BasicInfoSection;
