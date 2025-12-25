@@ -1,94 +1,117 @@
-// src/features/clients/components/EmploymentInfoModal.jsx (ファイル名変更後)
+// src/features/clients/components/EmploymentInfoModal.jsx
 
-// 1. useEffect をreactからインポートします
 import { useState, useEffect } from 'react';
-import { Modal, Box, Typography, Button, Stack, TextField } from '@mui/material';
+import { Modal, Box, Typography, Button, Stack, TextField, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import ja from 'date-fns/locale/ja';
 
-// モーダルのスタイル (変更なし)
 const style = {
   position: 'absolute',
   top: '50%',
   left: '50%',
-  // ... (以下、変更なし)
+  transform: 'translate(-50%, -50%)',
+  width: 400,
+  bgcolor: 'background.paper',
+  border: '2px solid #000',
+  boxShadow: 24,
   p: 4,
   color: 'text.primary'
 };
 
-// 2. propsに initialData を追加します（編集機能のため）
 function EmploymentInfoModal({ open, onClose, onSubmit, initialData }) {
-  // 3. 会社名を管理するためのstateを追加します
+  // 卒業タイプ: 'employment'(就職) or 'other'(その他完了)
+  const [type, setType] = useState('employment');
   const [companyName, setCompanyName] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [note, setNote] = useState(''); // その他の場合の理由メモ
 
-  // 4. モーダルが開かれた時に初期値を設定するロジックを追加します
   useEffect(() => {
-    // モーダルが表示されていて、かつ初期データがある場合（編集時）
-    if (open && initialData) {
-      setCompanyName(initialData.companyName || '');
-      // FirestoreのTimestampをJavaScriptのDateオブジェクトに変換
-      setSelectedDate(initialData.employmentDate ? initialData.employmentDate.toDate() : new Date());
-    } else if (open) {
-      // モーダルが表示されたが初期データがない場合（新規作成時）は値をリセット
-      setCompanyName('');
-      setSelectedDate(new Date());
+    if (open) {
+      if (initialData) {
+        setCompanyName(initialData.companyName || '');
+        setSelectedDate(initialData.employmentDate ? initialData.employmentDate.toDate() : new Date());
+        setType('employment'); 
+      } else {
+        setCompanyName('');
+        setSelectedDate(new Date());
+        setType('employment');
+        setNote('');
+      }
     }
-    // openかinitialDataが変わるたびにこのeffectを実行
   }, [open, initialData]);
 
   const handleSubmit = () => {
-    // 5. バリデーションを強化し、会社名もチェックします
-    if (companyName.trim() && selectedDate) {
-      // 6. onSubmitには日付だけでなく、会社名も含むオブジェクトを渡します
-      onSubmit({
-        companyName: companyName.trim(),
-        employmentDate: selectedDate,
-      });
-      onClose();
-    } else {
-      alert('就職先企業名と就職日の両方を入力してください。');
+    if (type === 'employment') {
+      // 就職の場合：会社名は必須
+      if (!companyName.trim()) {
+        alert('就職先企業名を入力してください。');
+        return;
+      }
     }
+    
+    // データ送信
+    onSubmit({
+      type, // 'employment' または 'other'
+      companyName: type === 'employment' ? companyName.trim() : '', // その他なら空
+      employmentDate: selectedDate,
+      note: type === 'other' ? note : '' // 理由メモ
+    });
+    onClose();
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      aria-labelledby="employment-info-modal-title" // ID名を変更
-    >
+    <Modal open={open} onClose={onClose}>
       <Box sx={style}>
-        {/* 7. タイトルを変更します */}
-        <Typography id="employment-info-modal-title" variant="h6" component="h2">
-          就職情報の登録
+        <Typography variant="h6" component="h2" gutterBottom>
+          卒業・完了処理
         </Typography>
 
-        {/* 8. 入力欄をまとめるため、Boxで囲みレイアウトを調整します */}
         <Box sx={{ my: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {/* ▼▼▼ [新規追加] 会社名を入力するためのTextFieldです ▼▼▼ */}
-          <TextField
-            label="就職先企業名"
-            variant="outlined"
-            fullWidth
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            required
-            autoFocus // モーダルが開いたらすぐに文字入力できるように
-          />
+          
+          {/* 卒業区分の選択 */}
+          <FormControl component="fieldset">
+            <FormLabel component="legend">区分</FormLabel>
+            <RadioGroup row value={type} onChange={(e) => setType(e.target.value)}>
+              <FormControlLabel value="employment" control={<Radio />} label="就職" />
+              <FormControlLabel value="other" control={<Radio />} label="その他完了" />
+            </RadioGroup>
+          </FormControl>
 
-          {/* 日付選択カレンダー (既存のものをそのまま利用) */}
+          {/* 就職の場合のみ表示 */}
+          {type === 'employment' && (
+            <TextField
+              label="就職先企業名"
+              fullWidth
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              required
+              autoFocus
+            />
+          )}
+
           <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
             <DatePicker
-              label="就職日"
+              label={type === 'employment' ? "就職日" : "完了日"}
               value={selectedDate}
-              onChange={(newValue) => {
-                setSelectedDate(newValue);
-              }}
+              onChange={(newValue) => setSelectedDate(newValue)}
               renderInput={(params) => <TextField {...params} fullWidth />}
             />
           </LocalizationProvider>
+          
+          {/* その他の場合のみ表示 */}
+          {type === 'other' && (
+             <TextField
+              label="完了理由・備考"
+              fullWidth
+              multiline
+              rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="例: 進学のため、期間満了など"
+            />
+          )}
         </Box>
         
         <Stack direction="row" spacing={2} justifyContent="flex-end">
