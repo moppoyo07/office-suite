@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "target": "manecto", // ★★★ この一行を追加するだけ ★★★
+    "target": "manecto", 
     "public": "packages/dashboard/dist",
     "ignore": [
       "firebase.json",

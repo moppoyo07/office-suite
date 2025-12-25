@@ -1,3 +1,5 @@
+// src/features/clients/hooks/useFollowUpClients.js
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/firebase/index.js";
@@ -81,17 +83,20 @@ export const useFollowUpClients = () => {
     setIsLostModalOpen(true);
   }, []);
 
-  // ★★★ ここが修正された部分です ★★★
+  // ★修正: ロスト時にステータスを更新し、フェーズ記録も行うように修正
   const handleConfirmLost = useCallback(async (reason, details) => {
     if (!lostTarget) return;
     try {
       await updateDoc(doc(db, "clients", lostTarget.id), { 
+        status: 'closed-lost',            // リストから消すためステータス変更
+        lostAtPhase: lostTarget.status,   // ロストカウンター集計用
+        
         isRetired: true,
         retiredAt: new Date(),
         lostReason: reason,
         lostReasonDetails: details
       });
-    } catch (error) { // ← ここに { がありませんでした
+    } catch (error) {
       console.error("退職処理エラー:", error);
     } finally {
       setIsLostModalOpen(false);

@@ -2,75 +2,87 @@
 
 import { useCallback } from 'react';
 import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
-import { db } from '../firebase'; // パスは環境に合わせて調整
+import { db } from '../firebase'; 
 
-/**
- * 利用者情報の更新処理を専門に扱うカスタムフック
- */
 export const useClientUpdater = (onSuccess) => {
-  // ステータスを 'graduated' に更新し、就職情報を保存する関数
-  const graduateClient = useCallback(async (clientId, employmentData) => {
-    if (!clientId || !employmentData || !employmentData.employmentDate || !employmentData.companyName) {
-      console.error("引数が不足しています: graduateClient");
-      alert("エラー: 必要な情報が不足しています。");
+  
+  const graduateClient = useCallback(async (clientId, data) => {
+    // データの種類を判定 (デフォルトは就職)
+    const isEmployment = data.type === 'employment' || !data.type;
+
+    // 基本チェック: IDと日付は必須
+    if (!clientId || !data.employmentDate) {
+      console.error("引数が不足: IDまたは日付なし");
+      alert("エラー: 日付情報が必要です。");
+      return;
+    }
+
+    // 就職の場合のみ、会社名チェックを行う
+    if (isEmployment && !data.companyName) {
+      console.error("引数が不足: 会社名なし");
+      alert("エラー: 就職先企業名が必要です。");
       return;
     }
 
     const clientRef = doc(db, "clients", clientId);
 
     try {
-      await updateDoc(clientRef, {
-        status: 'graduated',
-        employmentInfo: {
-          companyName: employmentData.companyName.trim(),
-          employmentDate: Timestamp.fromDate(employmentData.employmentDate),
-        },
-        updatedAt: serverTimestamp()
-      });
+      const updateData = {
+        updatedAt: serverTimestamp(),
+      };
 
-      console.log(`利用者 ${clientId} を 'graduated' に更新しました。`);
-      // 成功した場合に、親コンポーネントから渡されたコールバック関数を実行
-      if (onSuccess) {
-        onSuccess();
+      if (isEmployment) {
+        // --- 就職の場合（定着支援へ） ---
+        updateData.status = 'follow-up-m1'; // 定着支援1ヶ月目
+        updateData.employmentDate = Timestamp.fromDate(data.employmentDate);
+        updateData.employmentCompany = data.companyName.trim();
+        
+        // 互換性のため employmentInfo にも入れる
+        updateData.employmentInfo = {
+          companyName: data.companyName.trim(),
+          employmentDate: Timestamp.fromDate(data.employmentDate),
+        };
+        
+        console.log(`利用者 ${clientId} を 'follow-up-m1' (就職卒業) に更新`);
+      } else {
+        // --- その他の完了の場合（完了者リストへ直行） ---
+        updateData.status = 'completed'; // 完了ステータス
+        updateData.completionDate = Timestamp.fromDate(data.employmentDate); // 完了日
+        updateData.completionNote = data.note || ''; // 完了理由メモ
+        
+        console.log(`利用者 ${clientId} を 'completed' (その他完了) に更新`);
       }
+
+      await updateDoc(clientRef, updateData);
+
+      if (onSuccess) onSuccess();
     } catch (error) {
-      console.error("就職情報の更新エラー:", error);
-      alert("エラーが発生しました。就職情報を更新できませんでした。");
+      console.error("卒業更新エラー:", error);
+      alert("更新できませんでした。");
     }
   }, [onSuccess]);
 
-  // ステータスを 'closed-lost' に更新し、失注情報を保存する関数
+  // ロスト処理 (変更なし)
   const loseClient = useCallback(async (clientId, lostInfo) => {
     if (!clientId || !lostInfo || !lostInfo.reason || !lostInfo.currentStatus) {
-      console.error("引数が不足しています: loseClient");
       alert("エラー: 必要な情報が不足しています。");
       return;
     }
-
     const clientRef = doc(db, "clients", clientId);
-
     try {
       await updateDoc(clientRef, {
         status: 'closed-lost',
         lostAtPhase: lostInfo.currentStatus,
         lostReason: lostInfo.reason,
-        lostReasonDetails: lostInfo.details || "", // 詳細はオプショナル
+        lostReasonDetails: lostInfo.details || "",
         updatedAt: serverTimestamp()
       });
-
-      console.log(`利用者 ${clientId} を 'closed-lost' に更新しました。`);
-      if (onSuccess) {
-        onSuccess();
-      }
+      if (onSuccess) onSuccess();
     } catch (error) {
       console.error("ロスト処理エラー:", error);
-      alert("エラーが発生しました。ロスト処理に失敗しました。");
+      alert("ロスト処理に失敗しました。");
     }
   }, [onSuccess]);
   
-  // 他の汎用的なステータス更新関数も、必要ならここに追加していく
-  // const updateClientStatus = useCallback(async (clientId, newStatus) => { ... });
-
-  // このフックが提供する関数群を返す
   return { graduateClient, loseClient };
 };
