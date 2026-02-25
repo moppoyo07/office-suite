@@ -10,6 +10,13 @@
     max-width: 210mm;
     margin: 0 auto;
     line-height: 1.5;
+    box-sizing: border-box;
+}
+
+.retention-print-container *,
+.retention-print-container *::before,
+.retention-print-container *::after {
+    box-sizing: border-box;
 }
 
 /* ヘッダー */
@@ -45,6 +52,7 @@
     border-collapse: collapse;
     border: 1px solid #000;
     margin-bottom: 0;
+    table-layout: fixed;
 }
 
 .retention-print-table th,
@@ -53,6 +61,8 @@
     padding: 4px 6px;
     vertical-align: middle;
     font-size: 10pt;
+    overflow: hidden;
+    word-wrap: break-word;
 }
 
 .retention-print-table th {
@@ -87,10 +97,12 @@
     display: flex;
     border: 1px solid #000;
     border-top: none;
+    width: 100%;
 }
 
 .retention-print-col {
     flex: 1;
+    min-width: 0;
 }
 
 .retention-print-col:first-child {
@@ -110,6 +122,8 @@
     min-height: 150px;
     white-space: pre-wrap;
     font-size: 10pt;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .retention-print-col-content.short {
@@ -121,10 +135,12 @@
     display: flex;
     border: 1px solid #000;
     border-top: none;
+    width: 100%;
 }
 
 .retention-print-shared-label {
     width: 80px;
+    min-width: 80px;
     background-color: #fffde7;
     font-weight: bold;
     text-align: center;
@@ -138,6 +154,7 @@
     flex: 1;
     padding: 8px;
     min-height: 30px;
+    min-width: 0;
 }
 
 /* フッター */
@@ -145,6 +162,7 @@
     display: flex;
     border: 1px solid #000;
     border-top: none;
+    width: 100%;
 }
 
 .retention-print-footer-cell {
@@ -161,10 +179,12 @@
     background-color: #fffde7;
     font-weight: bold;
     width: 80px;
+    min-width: 80px;
 }
 
 .retention-print-footer-cell.value {
     flex: 1;
+    min-width: 0;
 }
 
 /* 署名欄 */
@@ -186,14 +206,29 @@
 @media print {
     @page {
         size: A4 portrait;
-        margin: 8mm;
+        margin: 10mm;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
     }
 
     .retention-print-container {
         width: 100%;
+        max-width: none;
         padding: 0;
         margin: 0;
         box-shadow: none;
+        overflow: hidden;
+    }
+
+    .retention-print-table,
+    .retention-print-section,
+    .retention-print-split,
+    .retention-print-shared,
+    .retention-print-footer {
+        page-break-inside: avoid;
     }
 
     .retention-print-table th,
