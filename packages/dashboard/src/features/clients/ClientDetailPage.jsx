@@ -249,6 +249,8 @@ function ClientDetailPage() {
                 clientId={clientId}
                 clientName={clientData?.name}
                 serviceStartDate={clientData?.serviceStartDate}
+                provisionalPeriodEndDate={clientData?.provisionalPeriodEndDate}
+                branchId={clientData?.branchId}
               />
             )}
           </Box>

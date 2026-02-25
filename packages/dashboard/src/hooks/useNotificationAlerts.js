@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/index';
 import { CLIENT_STATUS } from '../constants/clientStatus';
 import { addMonths, differenceInDays, startOfDay, format } from 'date-fns';
@@ -16,7 +16,8 @@ const ALERT_CONFIGS = {
     interview: { label: '見学予定', daysBeforeShow: 7, yellowDays: 3, redDays: 1 },
     trial: { label: '体験開始', daysBeforeShow: 7, yellowDays: 3, redDays: 1 },
     recipientExpiry: { label: '受給者証期限', daysBeforeShow: 30, yellowDays: 14, redDays: 7 },
-    provisionalPeriod: { label: '暫定期間終了（書類提出）', daysBeforeShow: 14, yellowDays: 7, redDays: 3 },
+    assessmentSubmit: { label: 'アセスメント提出期限', daysBeforeShow: 14, yellowDays: 7, redDays: 2 },
+    assessmentIncomplete: { label: 'アセスメント未入力', daysBeforeShow: 999, yellowDays: 999, redDays: 999 },
     interviewReminder: { label: '見学前日リマインダー', daysBeforeShow: 1, yellowDays: 1, redDays: 0 },
     trialReminder: { label: '体験前日リマインダー', daysBeforeShow: 1, yellowDays: 1, redDays: 0 },
 };
@@ -34,7 +35,9 @@ export function useNotificationAlerts() {
     const [loading, setLoading] = useState(true);
     const [incompleteTasks, setIncompleteTasks] = useState([]); // 未完了タスク
 
-    // 1. クライアントデータを取得（こちらは頻繁に変わらないのでワンショット）
+    // 1. クライアントデータ＋アセスメント存在チェック
+    const [assessmentIds, setAssessmentIds] = useState(new Set());
+
     useEffect(() => {
         const fetchClients = async () => {
             setLoading(true);
@@ -54,6 +57,15 @@ export function useNotificationAlerts() {
                 const snapshotClients = await getDocs(qClients);
                 const clientsData = snapshotClients.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setClients(clientsData);
+
+                // アセスメント存在チェック（利用開始済みクライアントのみ）
+                const activeClients = clientsData.filter(c => c.serviceStartDate);
+                const ids = new Set();
+                for (const c of activeClients) {
+                    const aSnap = await getDoc(doc(db, 'assessments', c.id));
+                    if (aSnap.exists()) ids.add(c.id);
+                }
+                setAssessmentIds(ids);
             } catch (error) {
                 console.error('クライアントデータ取得エラー:', error);
             } finally {
@@ -220,23 +232,45 @@ export function useNotificationAlerts() {
                 }
             }
 
-            // 5. 暫定期間終了アラート
+            // 5. アセスメント提出期限アラート（暫定期間終了日 - 14日 = 提出期限）
             if (client.provisionalPeriodEndDate) {
-                const config = ALERT_CONFIGS.provisionalPeriod;
-                const targetDate = client.provisionalPeriodEndDate.toDate ? client.provisionalPeriodEndDate.toDate() : new Date(client.provisionalPeriodEndDate);
-                const daysUntil = differenceInDays(startOfDay(targetDate), today);
+                const config = ALERT_CONFIGS.assessmentSubmit;
+                const endDate = client.provisionalPeriodEndDate.toDate ? client.provisionalPeriodEndDate.toDate() : new Date(client.provisionalPeriodEndDate);
+                // 提出期限 = 暫定期間終了日 - 14日（支店設定で変更可能だがアラートではデフォルト14日）
+                const submitDate = new Date(endDate);
+                submitDate.setDate(submitDate.getDate() - 14);
+                const daysUntil = differenceInDays(startOfDay(submitDate), today);
 
-                // 14日前～当日まで表示
-                if (daysUntil >= 0 && daysUntil <= config.daysBeforeShow) {
+                // 提出期限14日前～超過7日後まで表示
+                if (daysUntil >= -7 && daysUntil <= config.daysBeforeShow) {
                     result.push({
-                        id: `${client.id}-provisionalPeriod`,
+                        id: `${client.id}-assessmentSubmit`,
                         clientId: client.id,
                         clientName,
-                        type: 'provisionalPeriod',
-                        label: config.label,
-                        targetDate,
-                        daysUntil,
-                        color: getAlertColor(daysUntil, config),
+                        type: 'assessmentSubmit',
+                        label: daysUntil < 0 ? 'アセスメント提出期限超過' : config.label,
+                        targetDate: submitDate,
+                        daysUntil: Math.max(0, daysUntil),
+                        color: daysUntil < 0 ? 'red' : getAlertColor(daysUntil, config),
+                    });
+                }
+            }
+
+            // 5b. アセスメント未入力アラート（利用開始から7日以上経過）
+            if (client.serviceStartDate && !assessmentIds.has(client.id)) {
+                const startDate = client.serviceStartDate.toDate ? client.serviceStartDate.toDate() : new Date(client.serviceStartDate);
+                const daysSinceStart = differenceInDays(today, startOfDay(startDate));
+
+                if (daysSinceStart >= 7) {
+                    result.push({
+                        id: `${client.id}-assessmentIncomplete`,
+                        clientId: client.id,
+                        clientName,
+                        type: 'assessmentIncomplete',
+                        label: `アセスメント未入力（${daysSinceStart}日経過）`,
+                        targetDate: startDate,
+                        daysUntil: 0,
+                        color: daysSinceStart >= 14 ? 'red' : 'yellow',
                     });
                 }
             }
@@ -304,7 +338,7 @@ export function useNotificationAlerts() {
         }
 
         return result;
-    }, [clients, incompleteTasks]);
+    }, [clients, incompleteTasks, assessmentIds]);
 
     return { alerts, loading };
 }

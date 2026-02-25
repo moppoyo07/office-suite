@@ -38,7 +38,8 @@ const ALERT_TYPE_LABELS = {
     interview: '見学予定',
     trial: '体験開始',
     recipientExpiry: '受給者証期限',
-    provisionalPeriod: '暫定期間終了',
+    assessmentSubmit: 'アセスメント提出期限',
+    assessmentIncomplete: 'アセスメント未入力',
     quest: '本日のクエスト',
 };
 

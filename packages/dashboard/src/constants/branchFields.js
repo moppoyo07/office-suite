@@ -152,6 +152,13 @@ export const BRANCH_FIELDS = {
         type: 'text',
         placeholder: '○○市',
     },
+    assessmentSubmitDaysBefore: {
+        label: 'アセスメント提出期限（暫定期間終了の何日前）',
+        section: BRANCH_SECTIONS.WELFARE,
+        type: 'number',
+        placeholder: '14',
+        helperText: '暫定期間終了日の何日前に提出するか（デフォルト: 14日前）',
+    },
 
     // === 定員・設備 ===
     capacity: {
