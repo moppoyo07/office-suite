@@ -169,6 +169,12 @@ export const USER_FIELDS = {
         section: USER_SECTIONS.AFFILIATION,
         type: 'select',
     },
+    isServiceManager: {
+        label: 'サービス管理責任者',
+        section: USER_SECTIONS.AFFILIATION,
+        type: 'boolean',
+        helperText: 'ONにするとサービス記録の入力が制限されます（閲覧のみ）',
+    },
 
     // === 個人情報 ===
     birthDate: {

@@ -42,8 +42,11 @@ import { useReactToPrint } from 'react-to-print';
 import ServiceRecordEditModal from '../features/service-records/ServiceRecordEditModal';
 import ServiceRecordPrintView from '../features/service-records/ServiceRecordPrintView';
 import EditableServiceTable from '../features/service-records/EditableServiceTable';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 export default function ServiceRecordListPage() {
+    const { profile } = useCurrentUser();
+    const isServiceManager = profile?.isServiceManager === true;
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [attendanceRecords, setAttendanceRecords] = useState([]);
     const [serviceRecords, setServiceRecords] = useState({});
@@ -283,6 +286,12 @@ export default function ServiceRecordListPage() {
 
     return (
         <Box sx={{ p: 2 }}>
+            {/* サービス管理責任者アラート */}
+            {isServiceManager && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                    サービス管理責任者はサービス記録の記入ができません。閲覧のみ可能です。
+                </Alert>
+            )}
             {/* ヘッダー */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
