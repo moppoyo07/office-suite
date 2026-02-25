@@ -6,6 +6,7 @@ service-account.json
 
 # ビルド成果物
 dist/
+dev-dist/
 
 # Firebase ローカルキャッシュ
 .firebase/

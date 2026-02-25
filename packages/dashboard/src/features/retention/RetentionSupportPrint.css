@@ -206,19 +206,19 @@
 @media print {
     @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 15mm;
     }
 
     body {
-        margin: 0;
-        padding: 0;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
     .retention-print-container {
-        width: 100%;
-        max-width: none;
-        padding: 0;
-        margin: 0;
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
         box-shadow: none;
         overflow: hidden;
     }
