@@ -28,4 +28,4 @@ jobs:
         run: pnpm --filter dashboard build
 
       - name: Deploy to Firebase Hosting
-        run: npx firebase-tools deploy --only hosting --token ${{ secrets.FIREBASE_TOKEN }}
+        run: npx firebase-tools deploy --only hosting --project officehub-c6c1b --token ${{ secrets.FIREBASE_TOKEN }}
