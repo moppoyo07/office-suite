@@ -405,6 +405,18 @@ export default function UserDetailPage() {
                         </Select>
                     </FormControl>
                 )}
+
+                {/* サービス管理責任者フラグ */}
+                <FormControlLabel
+                    control={
+                        <Switch
+                            name="isServiceManager"
+                            checked={!!formData.isServiceManager}
+                            onChange={handleChange}
+                        />
+                    }
+                    label="サービス管理責任者（ONでサービス記録の入力制限）"
+                />
             </Stack>
         );
     };
