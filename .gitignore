@@ -1,0 +1,18 @@
+node_modules
+
+# Firebase サービスアカウントキー（絶対にコミットしない）
+*-firebase-adminsdk-*.json
+service-account.json
+
+# ビルド成果物
+dist/
+
+# Firebase ローカルキャッシュ
+.firebase/
+
+# Claude エージェントファイル
+.agent/
+
+# Excel / 一時ファイル
+*.xlsx
+*.xls

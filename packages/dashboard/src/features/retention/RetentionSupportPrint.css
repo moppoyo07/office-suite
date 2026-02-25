@@ -1,0 +1,213 @@
+/* src/features/retention/RetentionSupportPrint.css */
+/* 定着支援レポート印刷用スタイル（別紙様式１準拠） */
+
+.retention-print-container {
+    font-family: '游明朝', 'Yu Mincho', 'MS 明朝', serif;
+    font-size: 11pt;
+    color: #000;
+    background: #fff;
+    padding: 10mm;
+    max-width: 210mm;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* ヘッダー */
+.retention-print-header {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.retention-print-form-number {
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 10pt;
+}
+
+.retention-print-title {
+    text-align: center;
+    font-size: 16pt;
+    font-weight: bold;
+    margin: 0 0 8px 0;
+}
+
+.retention-print-date-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 24px;
+    font-size: 10pt;
+}
+
+/* テーブル */
+.retention-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #000;
+    margin-bottom: 0;
+}
+
+.retention-print-table th,
+.retention-print-table td {
+    border: 1px solid #000;
+    padding: 4px 6px;
+    vertical-align: middle;
+    font-size: 10pt;
+}
+
+.retention-print-table th {
+    background-color: #fffde7;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* セクション */
+.retention-print-section {
+    border: 1px solid #000;
+    border-top: none;
+}
+
+.retention-print-section-header {
+    background-color: #fffde7;
+    font-weight: bold;
+    text-align: center;
+    padding: 4px;
+    border-bottom: 1px solid #000;
+}
+
+.retention-print-section-content {
+    padding: 8px;
+    min-height: 60px;
+    white-space: pre-wrap;
+    font-size: 10pt;
+}
+
+/* 分割カラム */
+.retention-print-split {
+    display: flex;
+    border: 1px solid #000;
+    border-top: none;
+}
+
+.retention-print-col {
+    flex: 1;
+}
+
+.retention-print-col:first-child {
+    border-right: 1px solid #000;
+}
+
+.retention-print-col-header {
+    background-color: #f5f5f5;
+    text-align: center;
+    padding: 4px;
+    font-size: 9pt;
+    border-bottom: 1px solid #000;
+}
+
+.retention-print-col-content {
+    padding: 8px;
+    min-height: 150px;
+    white-space: pre-wrap;
+    font-size: 10pt;
+}
+
+.retention-print-col-content.short {
+    min-height: 80px;
+}
+
+/* 共有事項 */
+.retention-print-shared {
+    display: flex;
+    border: 1px solid #000;
+    border-top: none;
+}
+
+.retention-print-shared-label {
+    width: 80px;
+    background-color: #fffde7;
+    font-weight: bold;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #000;
+}
+
+.retention-print-shared-content {
+    flex: 1;
+    padding: 8px;
+    min-height: 30px;
+}
+
+/* フッター */
+.retention-print-footer {
+    display: flex;
+    border: 1px solid #000;
+    border-top: none;
+}
+
+.retention-print-footer-cell {
+    padding: 4px 8px;
+    text-align: center;
+    border-right: 1px solid #000;
+}
+
+.retention-print-footer-cell:last-child {
+    border-right: none;
+}
+
+.retention-print-footer-cell.label {
+    background-color: #fffde7;
+    font-weight: bold;
+    width: 80px;
+}
+
+.retention-print-footer-cell.value {
+    flex: 1;
+}
+
+/* 署名欄 */
+.retention-print-sign-box {
+    border: 1px solid #000;
+    padding: 6px;
+    width: 90px;
+    margin-left: auto;
+    margin-top: 8px;
+    font-size: 9pt;
+}
+
+.retention-print-sign-date {
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* 印刷時のスタイル */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 8mm;
+    }
+
+    .retention-print-container {
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+    }
+
+    .retention-print-table th,
+    .retention-print-section-header,
+    .retention-print-shared-label,
+    .retention-print-footer-cell.label {
+        background-color: #fffde7 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .retention-print-col-header {
+        background-color: #f5f5f5 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

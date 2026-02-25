@@ -1,0 +1,16 @@
+{
+  "projects": {},
+  "targets": {
+    "officehub-c6c1b": {
+      "hosting": {
+        "main": [
+          "manecto"
+        ],
+        "portal": [
+          "manecto-portal"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

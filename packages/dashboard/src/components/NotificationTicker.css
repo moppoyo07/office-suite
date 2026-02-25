@@ -1,0 +1,40 @@
+/* src/components/NotificationTicker.css */
+/* 電光掲示板スクロールアニメーション */
+
+.ticker-wrapper {
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+}
+
+.ticker-content {
+    display: flex;
+    align-items: center;
+    animation: ticker-scroll 30s linear infinite;
+    white-space: nowrap;
+}
+
+/* アラートが少ない場合はゆっくり */
+.ticker-content:has(> :nth-child(3)) {
+    animation-duration: 20s;
+}
+
+/* アラートが多い場合は速く */
+.ticker-content:has(> :nth-child(10)) {
+    animation-duration: 40s;
+}
+
+@keyframes ticker-scroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+/* ホバー時は停止 */
+.ticker-wrapper:hover .ticker-content {
+    animation-play-state: paused;
+}

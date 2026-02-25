@@ -1,0 +1,31 @@
+{
+    "name": "Manecto チェックイン",
+    "short_name": "チェックイン",
+    "description": "就労支援事業所 セルフチェックインアプリ",
+    "start_url": "/portal",
+    "scope": "/portal",
+    "display": "standalone",
+    "orientation": "portrait",
+    "theme_color": "#0d9488",
+    "background_color": "#0f172a",
+    "icons": [
+        {
+            "src": "/portal-icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/portal-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "business",
+        "productivity"
+    ],
+    "lang": "ja",
+    "dir": "ltr"
+}
