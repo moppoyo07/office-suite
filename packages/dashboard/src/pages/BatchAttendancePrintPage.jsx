@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Box, Container, Typography, Button, CircularProgress,
-    Stack, Alert
+    Stack, Alert, Paper
 } from '@mui/material';
 import { Print, ArrowBack } from '@mui/icons-material';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
