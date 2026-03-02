@@ -18,7 +18,7 @@ import { CLIENT_STATUS } from '../constants/clientStatus';
 export default function BatchAttendancePrintPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const printRef = useRef();
+    const printRef = useRef(null);
 
     const year = parseInt(searchParams.get('year'));
     const month = parseInt(searchParams.get('month'));
@@ -56,9 +56,6 @@ export default function BatchAttendancePrintPage() {
                         id: doc.id,
                         ...data
                     });
-
-                    // 実績があり、かつ status='present' の場合を抽出条件にするのが一般的だが、
-                    // 欠席（absent）も含めて確認表は出すので、記録があれば対象とみなす
                     activeClientIds.add(data.clientId);
                 });
 
@@ -69,7 +66,6 @@ export default function BatchAttendancePrintPage() {
                 }
 
                 // 2. クライアント情報を取得
-                // ここでも全件取得 → JSフィルタリング方式を採用
                 const clientsQuery = query(collection(db, 'clients'));
                 const clientsSnap = await getDocs(clientsQuery);
 
@@ -78,14 +74,7 @@ export default function BatchAttendancePrintPage() {
                 clientsSnap.docs.forEach(doc => {
                     const client = { id: doc.id, ...doc.data() };
 
-                    // 実績があるクライアントのみ対象
                     if (activeClientIds.has(client.id)) {
-                        // 判定ロジック：
-                        // type='onsite' の場合：
-                        //   - 現在オンサイトステータス
-                        //   - または、実績の中に 'onsite' タイプが含まれている
-                        //   - または、（救済措置）実績がオンサイトしかない（リモートがない）退所者など
-
                         const records = recordsMap[client.id] || [];
                         const hasOnsite = records.some(r => r.attendanceType === 'onsite');
                         const hasRemote = records.some(r => r.attendanceType === 'remote');
@@ -95,15 +84,9 @@ export default function BatchAttendancePrintPage() {
                             if (client.status === CLIENT_STATUS.ACTIVE_ONSITE) {
                                 isMatch = true;
                             } else if (hasOnsite) {
-                                // ステータスが違っても、オンサイト実績があればオンサイト印刷に含める
                                 isMatch = true;
-                            } else if (!hasRemote && !hasOnsite) {
-                                // 実績にタイプ情報がない古いデータ等の場合
-                                // ステータスもオンサイトでなければ、除外（あるいはデフォルトどちらかに倒す）
-                                // ここでは厳密に、オンサイトでもなくリモート実績もなければ、含めない（あるいはアラート）
                             }
                         } else {
-                            // remote
                             if (client.status === CLIENT_STATUS.ACTIVE_REMOTE) {
                                 isMatch = true;
                             } else if (hasRemote) {
@@ -169,7 +152,7 @@ export default function BatchAttendancePrintPage() {
                             color="success"
                             size="large"
                             startIcon={<Print />}
-                            onClick={handlePrint}
+                            onClick={() => handlePrint()}
                             disabled={loading || clients.length === 0}
                         >
                             一括印刷
@@ -177,66 +160,64 @@ export default function BatchAttendancePrintPage() {
                     </Stack>
                 </Box>
 
-                {/* 印刷エリア */}
-                {loading ? (
+                {/* ローディング表示 */}
+                {loading && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                         <CircularProgress />
                     </Box>
-                ) : (
-                    <Box
-                        ref={printRef}
-                        sx={{
-                            bgcolor: '#fff',
-                            p: 0,
-                            // 画面表示用スタイルのリセット
-                            '@media screen': {
-                                bgcolor: '#f5f5f5',
-                                p: 2,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 4,
-                                maxHeight: '80vh',
-                                overflow: 'auto'
-                            }
-                        }}
-                    >
-                        {clients.map((client, index) => (
-                            <Box
-                                key={client.id}
-                                sx={{
-                                    // 画面表示時はカードっぽく
-                                    '@media screen': {
-                                        bgcolor: '#fff',
-                                        boxShadow: 1,
-                                        p: 2,
-                                    },
-                                    // 改ページ設定
-                                    pageBreakAfter: 'always',
-                                    breakAfter: 'page', // モダンブラウザ用
-                                    // 最後のページは改ページしない
-                                    '&:last-child': {
-                                        pageBreakAfter: 'auto',
-                                        breakAfter: 'auto'
-                                    }
-                                }}
-                            >
-                                <AttendanceRecordPrintView
-                                    clientName={client.name}
-                                    recipientId={client.recipientId}
-                                    year={year}
-                                    month={month}
-                                    records={recordsByClient[client.id] || []}
-                                />
-                            </Box>
-                        ))}
-
-                        {clients.length === 0 && (
-                            <Box sx={{ p: 4, textAlign: 'center' }}>
-                                <Typography>対象の利用者がいません</Typography>
-                            </Box>
-                        )}
-                    </Box>
                 )}
+
+                {/* 印刷エリア（常にマウント - refが常に有効になるように） */}
+                <Box
+                    ref={printRef}
+                    sx={{
+                        bgcolor: '#fff',
+                        p: 0,
+                        display: loading ? 'none' : 'block',
+                        '@media screen': {
+                            bgcolor: '#f5f5f5',
+                            p: 2,
+                            display: loading ? 'none' : 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
+                            maxHeight: '80vh',
+                            overflow: 'auto'
+                        }
+                    }}
+                >
+                    {clients.map((client, index) => (
+                        <Box
+                            key={client.id}
+                            sx={{
+                                '@media screen': {
+                                    bgcolor: '#fff',
+                                    boxShadow: 1,
+                                    p: 2,
+                                },
+                                pageBreakAfter: 'always',
+                                breakAfter: 'page',
+                                '&:last-child': {
+                                    pageBreakAfter: 'auto',
+                                    breakAfter: 'auto'
+                                }
+                            }}
+                        >
+                            <AttendanceRecordPrintView
+                                clientName={client.name}
+                                recipientId={client.recipientId}
+                                year={year}
+                                month={month}
+                                records={recordsByClient[client.id] || []}
+                            />
+                        </Box>
+                    ))}
+
+                    {!loading && clients.length === 0 && (
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                            <Typography>対象の利用者がいません</Typography>
+                        </Box>
+                    )}
+                </Box>
             </Box>
         </Container>
     );

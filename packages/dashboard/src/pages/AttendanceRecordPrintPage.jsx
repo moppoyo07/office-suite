@@ -18,7 +18,7 @@ export default function AttendanceRecordPrintPage() {
     const { clientId } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const printRef = useRef();
+    const printRef = useRef(null);
 
     const [client, setClient] = useState(null);
     const [records, setRecords] = useState([]);
@@ -138,7 +138,7 @@ export default function AttendanceRecordPrintPage() {
                             variant="contained"
                             color="primary"
                             startIcon={<Print />}
-                            onClick={handlePrint}
+                            onClick={() => handlePrint()}
                             disabled={loading}
                         >
                             印刷
@@ -146,23 +146,24 @@ export default function AttendanceRecordPrintPage() {
                     </Stack>
                 </Stack>
 
-                {/* 印刷プレビュー */}
-                {loading ? (
+                {/* ローディング表示 */}
+                {loading && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                         <CircularProgress />
                     </Box>
-                ) : (
-                    <Paper sx={{ p: 2, bgcolor: '#fff' }}>
-                        <AttendanceRecordPrintView
-                            ref={printRef}
-                            clientName={client?.name || ''}
-                            recipientId={client?.recipientId || ''}
-                            year={selectedYear}
-                            month={selectedMonth}
-                            records={records}
-                        />
-                    </Paper>
                 )}
+
+                {/* 印刷コンテンツ（常にマウント - refが常に有効になるように） */}
+                <Paper sx={{ p: 2, bgcolor: '#fff', display: loading ? 'none' : 'block' }}>
+                    <AttendanceRecordPrintView
+                        ref={printRef}
+                        clientName={client?.name || ''}
+                        recipientId={client?.recipientId || ''}
+                        year={selectedYear}
+                        month={selectedMonth}
+                        records={records}
+                    />
+                </Paper>
             </Box>
         </Container>
     );

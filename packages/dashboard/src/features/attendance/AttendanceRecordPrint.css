@@ -147,22 +147,25 @@
     border: 1px solid #000;
 }
 
+/* box-sizing統一（印刷時のはみ出し防止） */
+.attendance-print-container,
+.attendance-print-container * {
+    box-sizing: border-box;
+}
+
+/* @page はトップレベルに配置（@media print 内はCSS仕様上無効） */
+@page {
+    size: A4;
+    margin: 5mm;
+}
+
 /* 印刷時のスタイル */
 @media print {
-    /* react-to-printを使用するため、body * { visibility: hidden } は不要 */
-    /* むしろ一括印刷（複数ページ）の妨げになるため削除 */
-
     .attendance-print-container {
-        /* position: absolute; を削除し、自然なフローで配置 */
         width: 100%;
-        padding: 8mm 8mm 8mm 12mm; /* 画面表示と合わせる */
+        padding: 8mm 8mm 8mm 12mm;
         margin: 0;
-        box-shadow: none; /* 印刷時は影なし */
-    }
-
-    @page {
-        size: A4;
-        margin: 5mm;
+        box-shadow: none;
     }
 
     .weekend-row {
