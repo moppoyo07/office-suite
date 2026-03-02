@@ -55,9 +55,14 @@ export default function EditableServiceTable({
     };
 
     // 現在の値を取得（編集中 → serviceRecord → record の順で探す）
+    // startTime/endTimeはattendanceRecord専用なのでserviceRecordを参照しない
     const getValue = (record, field) => {
         if (editedRecords[record.id]?.[field] !== undefined) {
             return editedRecords[record.id][field];
+        }
+        const timeFields = ['startTime', 'endTime'];
+        if (timeFields.includes(field)) {
+            return record[field] || '';
         }
         if (record.serviceRecord?.[field] !== undefined) {
             return record.serviceRecord[field];
@@ -104,10 +109,11 @@ export default function EditableServiceTable({
                     delete serviceChanges.activitiesPmText;
                 }
 
-                // serviceRecordsを更新
-                if (record.serviceRecord?.id) {
+                // serviceRecordsを更新（出退時間はattendanceRecords専用なので除外）
+                const { startTime, endTime, ...serviceOnlyChanges } = serviceChanges;
+                if (record.serviceRecord?.id && Object.keys(serviceOnlyChanges).length > 0) {
                     await updateDoc(doc(db, 'serviceRecords', record.serviceRecord.id), {
-                        ...serviceChanges,
+                        ...serviceOnlyChanges,
                         updatedAt: serverTimestamp(),
                     });
                 }

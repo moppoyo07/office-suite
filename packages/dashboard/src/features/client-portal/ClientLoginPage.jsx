@@ -399,7 +399,7 @@ export default function ClientLoginPage() {
             </Snackbar>
 
             <Typography variant="caption" sx={{ mt: 4, color: 'rgba(255,255,255,0.3)' }}>
-                App Version: v2.0 (Sync Fix)
+                App Version: v2.1 (Activity Sync)
             </Typography>
         </Box >
     );

@@ -20,6 +20,9 @@ export default function EmploymentInfoModal({ open, onClose, onSubmit }) {
   const [type, setType] = useState('employment');
   const [date, setDate] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [companyContact, setCompanyContact] = useState('');
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
 
@@ -28,6 +31,9 @@ export default function EmploymentInfoModal({ open, onClose, onSubmit }) {
       setType('employment');
       setDate('');
       setCompanyName('');
+      setCompanyAddress('');
+      setCompanyPhone('');
+      setCompanyContact('');
       setReason('');
       setDetails('');
     }
@@ -42,7 +48,14 @@ export default function EmploymentInfoModal({ open, onClose, onSubmit }) {
 
   const handleSubmit = () => {
     if (!canSubmit()) return;
-    onSubmit({ type, date, companyName: companyName.trim(), reason, details });
+    onSubmit({
+      type, date,
+      companyName: companyName.trim(),
+      companyAddress: companyAddress.trim(),
+      companyPhone: companyPhone.trim(),
+      companyContact: companyContact.trim(),
+      reason, details,
+    });
   };
 
   return (
@@ -75,16 +88,39 @@ export default function EmploymentInfoModal({ open, onClose, onSubmit }) {
             InputLabelProps={{ shrink: true }}
           />
 
-          {/* 就職：会社名 */}
+          {/* 就職：就職先情報 */}
           {type === 'employment' && (
-            <TextField
-              label="就職先企業名"
-              value={companyName}
-              onChange={e => setCompanyName(e.target.value)}
-              fullWidth
-              required
-              autoFocus
-            />
+            <>
+              <TextField
+                label="就職先企業名"
+                value={companyName}
+                onChange={e => setCompanyName(e.target.value)}
+                fullWidth
+                required
+                autoFocus
+              />
+              <TextField
+                label="住所"
+                value={companyAddress}
+                onChange={e => setCompanyAddress(e.target.value)}
+                fullWidth
+                placeholder="例：広島市中区大手町1-1-1"
+              />
+              <TextField
+                label="電話番号"
+                value={companyPhone}
+                onChange={e => setCompanyPhone(e.target.value)}
+                fullWidth
+                placeholder="例：082-123-4567"
+              />
+              <TextField
+                label="担当者"
+                value={companyContact}
+                onChange={e => setCompanyContact(e.target.value)}
+                fullWidth
+                placeholder="例：山田太郎"
+              />
+            </>
           )}
 
           {/* 就職無し卒業：詳細メモ */}

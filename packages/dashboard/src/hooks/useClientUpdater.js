@@ -35,14 +35,23 @@ export const useClientUpdater = (onSuccess) => {
           status: CLIENT_STATUS.FOLLOW_UP_M1,
           employmentDate: dateValue,
           employmentCompany: data.companyName,
+          employmentAddress: data.companyAddress || '',
+          employmentPhone: data.companyPhone || '',
+          employmentContact: data.companyContact || '',
           closedType: null,
           updatedAt: serverTimestamp(),
         });
 
         // 活動記録に自動追加
+        const logLines = [`【就職決定】`, `就職先: ${data.companyName}`];
+        if (data.companyAddress) logLines.push(`住所: ${data.companyAddress}`);
+        if (data.companyPhone) logLines.push(`電話: ${data.companyPhone}`);
+        if (data.companyContact) logLines.push(`担当者: ${data.companyContact}`);
+        logLines.push(`就職日: ${data.date}`);
+
         await addDoc(collection(db, 'clients', clientId, 'activity_logs'), {
           type: 'employment',
-          content: `【就職決定】\n就職先: ${data.companyName}\n就職日: ${data.date}`,
+          content: logLines.join('\n'),
           createdAt: serverTimestamp(),
           staffName: '自動記録',
         });

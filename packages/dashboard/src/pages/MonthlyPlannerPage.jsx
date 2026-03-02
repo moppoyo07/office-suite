@@ -24,7 +24,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import BusinessIcon from '@mui/icons-material/Business';
 import HomeIcon from '@mui/icons-material/Home';
-import { collection, query, where, getDocs, doc, setDoc, deleteDoc, Timestamp, or } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, setDoc, deleteDoc, Timestamp, or } from 'firebase/firestore';
 import { db } from '../firebase';
 import { format, getDaysInMonth, addMonths, subMonths, getDay } from 'date-fns';
 import ja from 'date-fns/locale/ja';
@@ -33,8 +33,8 @@ import { isHoliday } from '../utils/japaneseHolidays';
 // 施設定員（仮）
 const FACILITY_CAPACITY = 20;
 
-// 活動内容の選択肢
-const ACTIVITY_OPTIONS = [
+// 活動内容のデフォルト（Firestoreから取得できない場合のフォールバック）
+const DEFAULT_ACTIVITY_OPTIONS = [
   'PC作業', '軽作業', '事務作業', 'ビジネスマナー',
   '就職活動', 'グループワーク', '面談', '運動',
   '清掃', '調理', '自習', '外出訓練',
@@ -47,6 +47,7 @@ export default function MonthlyPlannerPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [activityOptions, setActivityOptions] = useState(DEFAULT_ACTIVITY_OPTIONS);
 
   // 出席入力モーダル用のstate
   const [modalOpen, setModalOpen] = useState(false);
@@ -78,6 +79,21 @@ export default function MonthlyPlannerPage() {
     }
     return arr;
   }, [year, month, daysInMonth]);
+
+  // 支援業務設定から活動内容の選択肢を取得
+  useEffect(() => {
+    const fetchActivityOptions = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'systemSettings', 'supportConfig'));
+        if (docSnap.exists() && docSnap.data().activityOptions?.length > 0) {
+          setActivityOptions(docSnap.data().activityOptions);
+        }
+      } catch (err) {
+        console.error('活動内容設定の取得エラー:', err);
+      }
+    };
+    fetchActivityOptions();
+  }, []);
 
   // 利用者を取得
   useEffect(() => {
@@ -600,7 +616,7 @@ export default function MonthlyPlannerPage() {
           <Box>
             <Typography variant="subtitle2" sx={{ color: '#94a3b8', mb: 1 }}>活動内容</Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {ACTIVITY_OPTIONS.map(activity => (
+              {activityOptions.map(activity => (
                 <Chip
                   key={activity}
                   label={activity}

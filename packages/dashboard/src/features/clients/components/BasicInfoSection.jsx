@@ -77,51 +77,56 @@ const BasicInfoSection = ({ isEditing, data, handleChange, handleSave, handleCan
         <Typography variant="subtitle1" gutterBottom sx={{ borderLeft: '4px solid #1976d2', pl: 1, mb: 2 }}>
           基本情報
         </Typography>
-        <Grid container spacing={2} rowSpacing={3}>
-          <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid container spacing={2} rowSpacing={2.5}>
+          {/* 1行目: 氏名・フリガナ・生年月日・性別・血液型 */}
+          <Grid size={{ xs: 6, sm: 3 }}>
             <Typography variant="caption" color="text.secondary">氏名</Typography>
             <Typography>{data?.name || '未設定'}</Typography>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <Typography variant="caption" color="text.secondary">フリガナ</Typography>
             <Typography>{data?.nameKana || '未設定'}</Typography>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
+          <Grid size={{ xs: 6, sm: 2 }}>
             <Typography variant="caption" color="text.secondary">生年月日</Typography>
             <Typography>{formatDate(data?.birthDate)}</Typography>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3 }}>
+          <Grid size={{ xs: 3, sm: 2 }}>
             <Typography variant="caption" color="text.secondary">性別</Typography>
             <Typography>{data?.gender || '未設定'}</Typography>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3 }}>
+          <Grid size={{ xs: 3, sm: 2 }}>
             <Typography variant="caption" color="text.secondary">血液型</Typography>
             <Typography>{data?.bloodType || '未設定'}</Typography>
           </Grid>
+
+          {/* 2行目: 住所・電話番号・携帯電話 */}
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography variant="caption" color="text.secondary">住所</Typography>
+            <Typography>{(data?.postalCode ? `〒${data.postalCode} ` : '') + (data?.address || '未設定')}</Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">電話番号</Typography>
+            <Typography>{data?.phone || '未設定'}</Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">携帯電話</Typography>
+            <Typography>{data?.mobilePhone || '未設定'}</Typography>
+          </Grid>
+
+          {/* 3行目: MBTI・月次利用上限・PINコード */}
           <Grid size={{ xs: 6, sm: 3 }}>
             <Typography variant="caption" color="text.secondary">MBTI診断</Typography>
             <Typography>{data?.mbtiType || '未設定'}</Typography>
           </Grid>
-          <Grid size={12}>
-            <Typography variant="caption" color="text.secondary">住所</Typography>
-            <Typography>{(data?.postalCode ? `〒${data.postalCode} ` : '') + (data?.address || '未設定')}</Typography>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Typography variant="caption" color="text.secondary">電話番号</Typography>
-            <Typography>{data?.phone || '未設定'}</Typography>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Typography variant="caption" color="text.secondary">携帯電話</Typography>
-            <Typography>{data?.mobilePhone || '未設定'}</Typography>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <Typography variant="caption" color="text.secondary">月次利用上限</Typography>
             <Typography sx={{ color: data?.monthlyLimit ? '#10b981' : '#94a3b8' }}>
               {data?.monthlyLimit ? `${data.monthlyLimit}日` : '未設定（デフォルト: 月-8日）'}
             </Typography>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Typography variant="caption" color="text.secondary">PINコード（セルフチェックイン用）</Typography>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">PINコード</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
               {data?.pin ? (
                 <>
@@ -197,20 +202,17 @@ const BasicInfoSection = ({ isEditing, data, handleChange, handleSave, handleCan
         {/* 金額サマリ */}
         <Paper variant="outlined" sx={{ p: 2, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 2 }}>
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, sm: 3 }}>
-              {/* Removed Global Payment Type Display */}
-            </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Typography variant="caption" color="text.secondary">往復日額 (実費合計)</Typography>
               <Typography variant="h6">¥ {calculateDailyTotal().toLocaleString()}</Typography>
             </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Typography variant="caption" color="text.secondary">1ヶ月定期代</Typography>
               <Typography variant="h6">
                 {data?.commuteMonthlyPass ? `¥ ${Number(data.commuteMonthlyPass).toLocaleString()}` : '-'}
               </Typography>
             </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Typography variant="caption" color="text.secondary">行政認定単価</Typography>
               <Typography variant="h6">
                 {data?.commuteAdminDayCost ? `¥ ${Number(data.commuteAdminDayCost).toLocaleString()}` : '-'}
@@ -260,14 +262,29 @@ const BasicInfoSection = ({ isEditing, data, handleChange, handleSave, handleCan
               </Typography>
             </Grid>
             <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">就職先企業名</Typography>
-              <Typography>{data?.employmentCompany || '未設定'}</Typography>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
               <Typography variant="caption" color="text.secondary">離職日</Typography>
               <Typography sx={{ color: data?.retirementDate ? '#ef4444' : 'inherit' }}>
                 {formatDate(data?.retirementDate) || '未設定'}
               </Typography>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 3 }} />
+
+            {/* 就職先情報 */}
+            <Grid size={{ xs: 12, sm: 3 }}>
+              <Typography variant="caption" color="text.secondary">就職先企業名</Typography>
+              <Typography>{data?.employmentCompany || '未設定'}</Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 5 }}>
+              <Typography variant="caption" color="text.secondary">就職先住所</Typography>
+              <Typography>{data?.employmentAddress || '未設定'}</Typography>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 2 }}>
+              <Typography variant="caption" color="text.secondary">電話番号</Typography>
+              <Typography>{data?.employmentPhone || '未設定'}</Typography>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 2 }}>
+              <Typography variant="caption" color="text.secondary">担当者</Typography>
+              <Typography>{data?.employmentContact || '未設定'}</Typography>
             </Grid>
 
             {/* 定着支援フェーズ */}
@@ -526,6 +543,15 @@ const BasicInfoSection = ({ isEditing, data, handleChange, handleSave, handleCan
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <TextField size="small" name="employmentCompany" label="就職先企業名" value={data?.employmentCompany || ''} onChange={handleChange} fullWidth />
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <TextField size="small" name="employmentAddress" label="住所" value={data?.employmentAddress || ''} onChange={handleChange} fullWidth />
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <TextField size="small" name="employmentPhone" label="電話番号" value={data?.employmentPhone || ''} onChange={handleChange} fullWidth />
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <TextField size="small" name="employmentContact" label="担当者" value={data?.employmentContact || ''} onChange={handleChange} fullWidth />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <TextField size="small" name="retirementDate" label="離職日" type="date" value={data?.retirementDate ? format(new Date(data.retirementDate.seconds ? data.retirementDate.toDate() : data.retirementDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />

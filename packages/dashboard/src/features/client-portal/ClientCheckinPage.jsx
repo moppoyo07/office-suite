@@ -29,8 +29,8 @@ const MOOD_TYPES = [
     '心配', '憂鬱', '眠たい', '気持ちが高ぶっている',
 ];
 
-// 活動内容の選択肢（よく使うものをプリセット）
-const ACTIVITY_OPTIONS = [
+// 活動内容のデフォルト（Firestoreから取得できない場合のフォールバック）
+const DEFAULT_ACTIVITY_OPTIONS = [
     'PC作業', '軽作業', '事務作業', 'ビジネスマナー',
     '就職活動', 'グループワーク', '面談', '運動',
     '清掃', '調理', '自習', '外出訓練',
@@ -44,6 +44,7 @@ export default function ClientCheckinPage() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [activityOptions, setActivityOptions] = useState(DEFAULT_ACTIVITY_OPTIONS);
 
     const [form, setForm] = useState({
         attendanceType: 'onsite', // 通所 or 在宅
@@ -63,6 +64,22 @@ export default function ClientCheckinPage() {
         activityPm: [],
         activityNote: '',
     });
+
+    // 支援業務設定から活動内容の選択肢を取得
+    useEffect(() => {
+        const fetchActivityOptions = async () => {
+            try {
+                const docSnap = await getDoc(doc(db, 'systemSettings', 'supportConfig'));
+                console.log('[ActivityOptions] exists:', docSnap.exists(), 'options:', docSnap.data()?.activityOptions?.length);
+                if (docSnap.exists() && docSnap.data().activityOptions?.length > 0) {
+                    setActivityOptions(docSnap.data().activityOptions);
+                }
+            } catch (err) {
+                console.error('活動内容設定の取得エラー:', err);
+            }
+        };
+        fetchActivityOptions();
+    }, []);
 
     // 今日のデータをロード
     useEffect(() => {
@@ -418,7 +435,7 @@ export default function ClientCheckinPage() {
 
                 <Typography variant="caption" color="text.secondary">午前の予定（複数選択可）</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2, mt: 1 }}>
-                    {ACTIVITY_OPTIONS.map(activity => (
+                    {activityOptions.map(activity => (
                         <Checkbox
                             key={`am-${activity}`}
                             checked={form.activityAm.includes(activity)}
@@ -433,7 +450,7 @@ export default function ClientCheckinPage() {
 
                 <Typography variant="caption" color="text.secondary">午後の予定（複数選択可）</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2, mt: 1 }}>
-                    {ACTIVITY_OPTIONS.map(activity => (
+                    {activityOptions.map(activity => (
                         <Checkbox
                             key={`pm-${activity}`}
                             checked={form.activityPm.includes(activity)}
@@ -470,7 +487,7 @@ export default function ClientCheckinPage() {
             </Button>
 
             <Typography variant="caption" align="center" sx={{ display: 'block', mt: 4, mb: 1, color: 'rgba(255,255,255,0.3)' }}>
-                App Version: v2.0 (Sync Fix)
+                App Version: v2.1 (Activity Sync)
             </Typography>
         </Box>
     );

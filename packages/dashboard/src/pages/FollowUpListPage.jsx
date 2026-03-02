@@ -233,17 +233,19 @@ export default function FollowUpListPage() {
                 if (c.id !== logTarget.clientId) return c;
                 const isContact = ['phone_call', 'email'].includes(logData.type);
                 if (!isContact) return c;
+                // 日曜なら月曜にずらす
+                const skipSun = (d) => { if (d.getDay() === 0) d.setDate(d.getDate() + 1); return d; };
                 if (c.status === 'inquiry') {
                     const newAttempts = (c.contactAttempts || 0) + 1;
                     const intervals = [1, 1, 3, 7, 12, 30, 31];
                     const days = intervals[Math.min(newAttempts - 1, intervals.length - 1)];
                     const next = new Date();
                     next.setDate(next.getDate() + days);
-                    return { ...c, contactAttempts: newAttempts, nextContactDate: next };
+                    return { ...c, contactAttempts: newAttempts, nextContactDate: skipSun(next) };
                 } else {
                     const next = new Date();
                     next.setDate(next.getDate() + 2);
-                    return { ...c, nextContactDate: next };
+                    return { ...c, nextContactDate: skipSun(next) };
                 }
             }));
             setLogModalOpen(false);

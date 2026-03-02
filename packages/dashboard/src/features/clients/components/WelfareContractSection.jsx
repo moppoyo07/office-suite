@@ -1,4 +1,4 @@
-import { Grid, Stack, TextField, Typography, Box, Button, FormControl, InputLabel, Select, MenuItem, Divider } from '@mui/material';
+import { Grid, Stack, TextField, Typography, Box, Button, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { format } from 'date-fns';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebase/index';
@@ -70,9 +70,6 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
 
   // 表示モードのJSX
   const renderDisplayMode = () => {
-    const routes = data?.commuteRoutes || [];
-    const routeStr = routes.map(r => `${r.from}〜${r.to}`).join('、');
-
     return (
       <Stack spacing={3}>
         <DisplayRow>
@@ -96,13 +93,6 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           <DisplayItem label="請求先自治体" value={billingInfo.municipalityName || '未設定'} sm={4} />
         </DisplayRow>
 
-        <Divider sx={{ my: 1 }} />
-        <Typography variant="subtitle2" color="primary" fontWeight="bold">厚生訓練費 算出用データ（基本情報から参照）</Typography>
-        <DisplayRow>
-          <DisplayItem label="1日あたり交通費" value={data?.commuteAdminDayCost ? `${data.commuteAdminDayCost}円` : '0円'} sm={4} />
-          <DisplayItem label="定期代（月額）" value={data?.commuteMonthlyPass ? `${data.commuteMonthlyPass}円` : '0円'} sm={4} />
-          <DisplayItem label="設定経路" value={routeStr} sm={4} />
-        </DisplayRow>
       </Stack>
     );
   };

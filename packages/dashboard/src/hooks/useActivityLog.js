@@ -8,12 +8,18 @@ import { CLIENT_STATUS } from '../constants/clientStatus';
 // index 0 = 1回目の電話後, 1 = 2回目後, ... 6 = 7回目以降
 const CONTACT_INTERVALS = [1, 1, 3, 7, 12, 30, 31];
 
+// 日曜日なら月曜日にずらす
+const skipSunday = (date) => {
+    if (date.getDay() === 0) date.setDate(date.getDate() + 1);
+    return date;
+};
+
 const calcNextContactDate = (attempts) => {
     const days = CONTACT_INTERVALS[Math.min(attempts - 1, CONTACT_INTERVALS.length - 1)];
     const next = new Date();
     next.setHours(0, 0, 0, 0);
     next.setDate(next.getDate() + days);
-    return next;
+    return skipSunday(next);
 };
 
 export const useActivityLog = () => {
@@ -79,10 +85,11 @@ export const useActivityLog = () => {
                         updatedAt: serverTimestamp(),
                     });
                 } else {
-                    // 見学後保留・その他：2日後固定
+                    // 見学後保留・その他：2日後固定（日曜なら月曜へ）
                     const next = new Date();
                     next.setHours(0, 0, 0, 0);
                     next.setDate(next.getDate() + 2);
+                    skipSunday(next);
 
                     await updateDoc(doc(db, 'clients', clientId), {
                         nextContactDate: next,

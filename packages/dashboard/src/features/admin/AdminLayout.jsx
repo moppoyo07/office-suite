@@ -29,7 +29,7 @@ import TableChartIcon from '@mui/icons-material/TableChart';
 import SecurityIcon from '@mui/icons-material/Security';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { ROLE_METADATA } from '../../constants/roles';
+import { ROLE_METADATA, isPlatformRole } from '../../constants/roles';
 
 const drawerWidth = 240;
 
@@ -140,9 +140,12 @@ export default function AdminLayout() {
                             .filter((item) => {
                                 // roles が空配列なら全員に表示
                                 if (!item.roles || item.roles.length === 0) return true;
-                                // 開発モードでは全メニューを表示
-                                if (import.meta.env.DEV) return true;
-                                // ロールに合致すれば表示
+                                // 上位ロールは下位ロールのメニューもすべて表示（ロール階層）
+                                // platform_owner/platform_staff → 全メニュー
+                                if (isPlatformRole(role)) return true;
+                                // company_admin → platform_owner専用以外すべて
+                                if (role === 'company_admin') return !item.roles.every(r => r === 'platform_owner' || r === 'platform_staff');
+                                // それ以外 → ロールに合致すれば表示
                                 return item.roles.includes(role);
                             })
                             .map((item) => (

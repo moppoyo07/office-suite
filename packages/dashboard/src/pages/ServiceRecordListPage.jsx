@@ -61,8 +61,8 @@ export default function ServiceRecordListPage() {
     const [printRecords, setPrintRecords] = useState([]);
     const printRef = useRef(null);
 
-    // 入力済み編集用
-    const [selectedClientForEdit, setSelectedClientForEdit] = useState(null);
+    // 入力済み編集用（clientIdのみ保持、recordsはclientsWithRecordsから導出）
+    const [selectedClientIdForEdit, setSelectedClientIdForEdit] = useState(null);
 
     // データ取得
     const fetchData = useCallback(async () => {
@@ -158,6 +158,12 @@ export default function ServiceRecordListPage() {
         });
         return Array.from(clientMap.values());
     }, [completedRecords]);
+
+    // 選択中の利用者データ（最新のrecordsから導出）
+    const selectedClientForEdit = useMemo(() => {
+        if (!selectedClientIdForEdit) return null;
+        return clientsWithRecords.find(c => c.clientId === selectedClientIdForEdit) || null;
+    }, [selectedClientIdForEdit, clientsWithRecords]);
 
     // カードをクリックして編集
     const handleCardClick = (record) => {
@@ -422,7 +428,7 @@ export default function ServiceRecordListPage() {
                                                 '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' }
                                             }}
                                         >
-                                            <CardActionArea onClick={() => setSelectedClientForEdit(client)}>
+                                            <CardActionArea onClick={() => setSelectedClientIdForEdit(client.clientId)}>
                                                 <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#fff', fontSize: '0.85rem' }}>
@@ -452,7 +458,7 @@ export default function ServiceRecordListPage() {
                                 clientId={selectedClientForEdit.clientId}
                                 records={selectedClientForEdit.records}
                                 month={currentMonth}
-                                onClose={() => setSelectedClientForEdit(null)}
+                                onClose={() => setSelectedClientIdForEdit(null)}
                                 onPrint={() => {
                                     setSelectedClientForPrint(selectedClientForEdit);
                                     handlePrepareAndPrint(selectedClientForEdit.clientId, selectedClientForEdit.clientName, selectedClientForEdit.records);
