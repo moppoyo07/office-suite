@@ -5,9 +5,9 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Box, Container, Typography, Button, CircularProgress,
-    Stack, Alert, Paper
+    Stack, Alert, Paper, Grid, Chip
 } from '@mui/material';
-import { Print, ArrowBack } from '@mui/icons-material';
+import { Print, ArrowBack, Person, CheckCircle } from '@mui/icons-material';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { startOfMonth, endOfMonth, getDaysInMonth, addDays, getDay } from 'date-fns';
@@ -270,15 +270,50 @@ export default function BatchAttendancePrintPage() {
                         <Typography>対象の利用者がいません</Typography>
                     </Paper>
                 ) : (
-                    <Stack spacing={2}>
-                        {clients.map(client => (
-                            <Paper key={client.id} sx={{ p: 2, bgcolor: '#fff', color: '#000' }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#000' }}>
-                                    {client.name} - {(recordsByClient[client.id] || []).filter(r => r.status === 'present').length}日出席
+                    <Box>
+                        <Paper sx={{ p: 2, mb: 2, bgcolor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 2 }}>
+                            <Stack direction="row" alignItems="center" spacing={1}>
+                                <CheckCircle sx={{ color: '#10b981' }} />
+                                <Typography sx={{ color: '#10b981', fontWeight: 'bold' }}>
+                                    印刷対象: {clients.length}名
                                 </Typography>
-                            </Paper>
-                        ))}
-                    </Stack>
+                                <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+                                    - 「一括印刷」ボタンで全員分の出欠確認表が印刷されます
+                                </Typography>
+                            </Stack>
+                        </Paper>
+                        <Grid container spacing={1.5}>
+                            {clients.map(client => {
+                                const records = recordsByClient[client.id] || [];
+                                const presentCount = records.filter(r => r.status === 'present').length;
+                                const absentCount = records.filter(r => r.status === 'absent').length;
+                                return (
+                                    <Grid key={client.id} size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
+                                        <Paper sx={{
+                                            p: 1.5,
+                                            bgcolor: 'rgba(30, 41, 59, 0.5)',
+                                            border: '1px solid rgba(139, 92, 246, 0.2)',
+                                            borderRadius: 2,
+                                            '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.1)' },
+                                        }}>
+                                            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                                                <Person sx={{ color: '#8b5cf6', fontSize: 18 }} />
+                                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                                    {client.name}
+                                                </Typography>
+                                            </Stack>
+                                            <Stack direction="row" spacing={0.5}>
+                                                <Chip label={`出席 ${presentCount}日`} size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.2)', color: '#10b981', fontSize: '0.7rem', height: 20 }} />
+                                                {absentCount > 0 && (
+                                                    <Chip label={`欠席 ${absentCount}日`} size="small" sx={{ bgcolor: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', fontSize: '0.7rem', height: 20 }} />
+                                                )}
+                                            </Stack>
+                                        </Paper>
+                                    </Grid>
+                                );
+                            })}
+                        </Grid>
+                    </Box>
                 )}
             </Box>
         </Container>
