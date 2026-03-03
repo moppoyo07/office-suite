@@ -73,39 +73,39 @@ const generateOneClientHTML = (clientName, recipientId, year, month, records) =>
     }
 
     return `
-        <div style="margin-bottom:5mm;">
-            <h1 style="font-size:16pt;font-weight:bold;text-align:center;margin:0 0 5mm 0;">出欠確認表</h1>
-            <div style="display:flex;justify-content:space-between;margin-bottom:2mm;">
-                <div style="font-size:12pt;font-weight:bold;">${year}年${month}月分</div>
-                <div><span style="font-size:9pt;color:#333;">利用者氏名：</span><span style="font-weight:bold;border-bottom:1px solid #000;min-width:30mm;padding:0 2mm;">${clientName}</span></div>
+        <div style="margin-bottom:2mm;">
+            <h1 style="font-size:13pt;font-weight:bold;text-align:center;margin:0 0 2mm 0;">出欠確認表</h1>
+            <div style="display:flex;justify-content:space-between;margin-bottom:1mm;">
+                <div style="font-size:10pt;font-weight:bold;">${year}年${month}月分</div>
+                <div><span style="font-size:8pt;color:#333;">利用者氏名：</span><span style="font-weight:bold;border-bottom:1px solid #000;padding:0 2mm;">${clientName}</span></div>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:2mm;">
-                <div><span style="font-size:9pt;color:#333;">受給者証番号：</span><span style="font-weight:bold;border-bottom:1px solid #000;min-width:30mm;padding:0 2mm;">${recipientId || '未登録'}</span></div>
-                <div><span style="font-size:9pt;color:#333;">出席日数：</span><span style="font-weight:bold;text-align:center;">${attendanceCount}日</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:1mm;">
+                <div><span style="font-size:8pt;color:#333;">受給者証番号：</span><span style="font-weight:bold;border-bottom:1px solid #000;padding:0 2mm;">${recipientId || '未登録'}</span></div>
+                <div><span style="font-size:8pt;color:#333;">出席日数：</span><span style="font-weight:bold;">${attendanceCount}日</span></div>
             </div>
         </div>
         <table>
             <thead>
                 <tr>
-                    <th style="width:8%;">日付</th>
-                    <th style="width:8%;">曜日</th>
-                    <th style="width:8%;">出欠</th>
-                    <th style="width:12%;">開始時刻</th>
-                    <th style="width:12%;">終了時刻</th>
+                    <th style="width:7%;">日付</th>
+                    <th style="width:7%;">曜日</th>
+                    <th style="width:7%;">出欠</th>
+                    <th style="width:11%;">開始</th>
+                    <th style="width:11%;">終了</th>
                     <th style="width:20%;">加算等</th>
-                    <th style="width:24%;">備考</th>
+                    <th style="width:37%;">備考</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
         </table>
-        <div style="display:flex;justify-content:flex-end;gap:10mm;margin-top:8mm;">
+        <div style="display:flex;justify-content:flex-end;gap:8mm;margin-top:3mm;">
             <div style="text-align:center;">
-                <div style="font-size:8pt;margin-bottom:2mm;">利用者確認印</div>
-                <div style="width:25mm;height:20mm;border:1px solid #000;"></div>
+                <div style="font-size:7pt;margin-bottom:1mm;">利用者確認印</div>
+                <div style="width:20mm;height:15mm;border:1px solid #000;"></div>
             </div>
             <div style="text-align:center;">
-                <div style="font-size:8pt;margin-bottom:2mm;">事業所確認印</div>
-                <div style="width:25mm;height:20mm;border:1px solid #000;"></div>
+                <div style="font-size:7pt;margin-bottom:1mm;">事業所確認印</div>
+                <div style="width:20mm;height:15mm;border:1px solid #000;"></div>
             </div>
         </div>`;
 };
@@ -204,17 +204,17 @@ export default function BatchAttendancePrintPage() {
         @page { size: A4 portrait; margin: 5mm; }
         body {
             font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
-            font-size: 10pt;
+            font-size: 8pt;
             color: #000;
             background: #fff;
             margin: 0;
-            padding: 8mm 8mm 8mm 12mm;
+            padding: 5mm 5mm 5mm 10mm;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-        table { width: 100%; border-collapse: collapse; font-size: 9pt; }
-        td, th { border: 1px solid #000; padding: 1.5mm 2mm; text-align: center; vertical-align: middle; }
-        th { background-color: #f0f0f0; font-weight: bold; font-size: 8pt; }
+        table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+        td, th { border: 1px solid #000; padding: 0.8mm 1.5mm; text-align: center; vertical-align: middle; line-height: 1.2; }
+        th { background-color: #f0f0f0; font-weight: bold; font-size: 7pt; }
         .page-break { page-break-before: always; }
     </style>
 </head>
