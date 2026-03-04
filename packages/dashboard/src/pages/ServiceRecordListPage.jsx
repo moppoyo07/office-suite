@@ -38,6 +38,7 @@ import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, upda
 import { db } from '../firebase/index';
 import { format, addMonths, subMonths, getDaysInMonth, startOfMonth, endOfMonth } from 'date-fns';
 import ja from 'date-fns/locale/ja';
+import { roundTo30Min } from '../utils/roundTime';
 import { useReactToPrint } from 'react-to-print';
 import ServiceRecordEditModal from '../features/service-records/ServiceRecordEditModal';
 import ServiceRecordPrintView from '../features/service-records/ServiceRecordPrintView';
@@ -395,7 +396,7 @@ export default function ServiceRecordListPage() {
                                                     )}
                                                 </Box>
                                                 <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>
-                                                    {format(record.date, 'M/d', { locale: ja })} ({getDayOfWeek(record.date)}) {record.startTime || '--:--'}〜
+                                                    {format(record.date, 'M/d', { locale: ja })} ({getDayOfWeek(record.date)}) {roundTo30Min(record.startTime) || '--:--'}〜
                                                 </Typography>
                                             </CardContent>
                                         </CardActionArea>

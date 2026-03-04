@@ -11,6 +11,7 @@ import { Print, ArrowBack } from '@mui/icons-material';
 import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { startOfMonth, endOfMonth, format, getDaysInMonth, addDays, getDay } from 'date-fns';
+import { roundTo30Min } from '../utils/roundTime';
 
 // 曜日ラベル
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -58,8 +59,8 @@ const generateAttendanceHTML = (clientName, recipientId, year, month, records) =
         const rowBg = isWeekend ? 'background-color:#fafafa;' : '';
 
         const status = record?.status === 'present' ? '○' : record?.status === 'absent' ? '×' : '';
-        const startTime = record?.status === 'present' ? (record.startTime || '') : '';
-        const endTime = record?.status === 'present' ? (record.endTime || '') : '';
+        const startTime = record?.status === 'present' ? (roundTo30Min(record.startTime) || '') : '';
+        const endTime = record?.status === 'present' ? (roundTo30Min(record.endTime) || '') : '';
         const additions = record?.status === 'present' ? getAdditions(record) : '';
 
         tableRows += `<tr style="${rowBg}">
@@ -129,9 +130,9 @@ const generateFullHTML = (title, bodyContent) => `<!DOCTYPE html>
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-        table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
-        td, th { border: 1px solid #000; padding: 0.8mm 1.5mm; text-align: center; vertical-align: middle; line-height: 1.2; }
-        th { background-color: #f0f0f0; font-weight: bold; font-size: 7pt; }
+        table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+        td, th { border: 1px solid #000; padding: 1.1mm 1.7mm; text-align: center; vertical-align: middle; line-height: 1.5; }
+        th { background-color: #f0f0f0; font-weight: bold; font-size: 8pt; }
         .page-break { page-break-before: always; }
     </style>
 </head>
@@ -295,8 +296,8 @@ export default function AttendanceRecordPrintPage() {
                                                 <td>{dayNum}</td>
                                                 <td style={{ color: dow === 0 ? '#dc2626' : dow === 6 ? '#2563eb' : undefined }}>{DAY_LABELS[dow]}</td>
                                                 <td>{rec?.status === 'present' ? '○' : rec?.status === 'absent' ? '×' : ''}</td>
-                                                <td>{rec?.status === 'present' ? rec.startTime || '' : ''}</td>
-                                                <td>{rec?.status === 'present' ? rec.endTime || '' : ''}</td>
+                                                <td>{rec?.status === 'present' ? roundTo30Min(rec.startTime) || '' : ''}</td>
+                                                <td>{rec?.status === 'present' ? roundTo30Min(rec.endTime) || '' : ''}</td>
                                                 <td style={{ textAlign: 'left' }}>{rec?.status === 'present' ? getAdditions(rec) : ''}</td>
                                             </tr>
                                         );

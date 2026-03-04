@@ -3,6 +3,7 @@
 
 import React, { forwardRef } from 'react';
 import './ServiceRecordPrint.css';
+import { roundTo30Min } from '../../utils/roundTime';
 
 const ServiceRecordPrintView = forwardRef(({
     clientName,
@@ -54,11 +55,11 @@ const ServiceRecordPrintView = forwardRef(({
                             <div className="record-cell cell-time">
                                 <div className="time-row time-row-border">
                                     <div className="time-label">開始</div>
-                                    <div className="time-value">{record.startTime || ''}</div>
+                                    <div className="time-value">{roundTo30Min(record.startTime) || ''}</div>
                                 </div>
                                 <div className="time-row">
                                     <div className="time-label">終了</div>
-                                    <div className="time-value">{record.endTime || ''}</div>
+                                    <div className="time-value">{roundTo30Min(record.endTime) || ''}</div>
                                 </div>
                             </div>
 

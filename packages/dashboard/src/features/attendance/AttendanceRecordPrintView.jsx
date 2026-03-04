@@ -5,6 +5,7 @@ import React, { forwardRef } from 'react';
 import { format, getDaysInMonth, startOfMonth, addDays, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import './AttendanceRecordPrint.css';
+import { roundTo30Min } from '../../utils/roundTime';
 
 // 曜日ラベル
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -108,8 +109,8 @@ const AttendanceRecordPrintView = forwardRef(({
                                 <td className="col-status">
                                     {record?.status === 'present' ? '○' : record?.status === 'absent' ? '×' : ''}
                                 </td>
-                                <td className="col-time">{record?.status === 'present' ? (record.startTime || '') : ''}</td>
-                                <td className="col-time">{record?.status === 'present' ? (record.endTime || '') : ''}</td>
+                                <td className="col-time">{record?.status === 'present' ? (roundTo30Min(record.startTime) || '') : ''}</td>
+                                <td className="col-time">{record?.status === 'present' ? (roundTo30Min(record.endTime) || '') : ''}</td>
                                 <td className="col-additions">{record?.status === 'present' ? getAdditions(record) : ''}</td>
                                 <td className="col-memo"></td>
                             </tr>

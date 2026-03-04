@@ -12,6 +12,7 @@ import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore
 import { db } from '../firebase';
 import { startOfMonth, endOfMonth, getDaysInMonth, addDays, getDay } from 'date-fns';
 import { CLIENT_STATUS } from '../constants/clientStatus';
+import { roundTo30Min } from '../utils/roundTime';
 
 // 曜日ラベル
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -57,8 +58,8 @@ const generateOneClientHTML = (clientName, recipientId, year, month, records) =>
         const rowBg = isWeekend ? 'background-color:#fafafa;' : '';
 
         const status = record?.status === 'present' ? '○' : record?.status === 'absent' ? '×' : '';
-        const startTime = record?.status === 'present' ? (record.startTime || '') : '';
-        const endTime = record?.status === 'present' ? (record.endTime || '') : '';
+        const startTime = record?.status === 'present' ? (roundTo30Min(record.startTime) || '') : '';
+        const endTime = record?.status === 'present' ? (roundTo30Min(record.endTime) || '') : '';
         const additions = record?.status === 'present' ? getAdditions(record) : '';
 
         tableRows += `<tr style="${rowBg}">
