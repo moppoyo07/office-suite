@@ -22,6 +22,7 @@ import { db } from '../../firebase/index';
 import { format } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import { useAuth } from '../auth/context/AuthContext';
+import { CHARGE_FIELD_MAP } from '../../constants/chargeFields';
 
 export default function ServiceRecordEditModal({
     open,
@@ -34,6 +35,8 @@ export default function ServiceRecordEditModal({
     const [loading, setLoading] = useState(false);
     const [fetchedDocId, setFetchedDocId] = useState('');
     const [checkInData, setCheckInData] = useState(null);
+    const [enabledCharges, setEnabledCharges] = useState([]);
+    const [chargeStates, setChargeStates] = useState({});
     const [form, setForm] = useState({
         specialNotes: '',
         supportContent: '',
@@ -86,6 +89,64 @@ export default function ServiceRecordEditModal({
         fetchCheckIn();
     }, [attendanceRecord]);
 
+
+    // 支店設定から有効な加算項目を読み込み
+    useEffect(() => {
+        const loadCharges = async () => {
+            try {
+                const branchesSnapshot = await getDocs(collection(db, 'branches'));
+                if (!branchesSnapshot.empty) {
+                    const branchData = branchesSnapshot.docs[0].data();
+                    const charges = Object.entries(CHARGE_FIELD_MAP)
+                        .filter(([fieldKey]) => branchData[fieldKey] === true)
+                        .map(([, mapping]) => mapping);
+                    if (charges.length > 0) {
+                        setEnabledCharges(charges);
+                    } else {
+                        setEnabledCharges([
+                            CHARGE_FIELD_MAP.attendanceMealSupport,
+                            CHARGE_FIELD_MAP.attendanceTransportGoing,
+                            CHARGE_FIELD_MAP.attendanceTransportReturning,
+                        ]);
+                    }
+                } else {
+                    setEnabledCharges([
+                        CHARGE_FIELD_MAP.attendanceMealSupport,
+                        CHARGE_FIELD_MAP.attendanceTransportGoing,
+                        CHARGE_FIELD_MAP.attendanceTransportReturning,
+                    ]);
+                }
+            } catch (err) {
+                console.error('支店設定の取得に失敗:', err);
+            }
+        };
+        loadCharges();
+    }, []);
+
+    // attendanceRecordからserviceDetailsの初期状態を読み込み
+    useEffect(() => {
+        if (attendanceRecord?.serviceDetails) {
+            setChargeStates(attendanceRecord.serviceDetails);
+        } else {
+            setChargeStates({});
+        }
+    }, [attendanceRecord]);
+
+    // 加算チップのトグル処理（即座にFirestoreを更新）
+    const handleChargeToggle = async (chargeKey) => {
+        if (!attendanceRecord?.id) return;
+        const newValue = !chargeStates[chargeKey];
+        setChargeStates(prev => ({ ...prev, [chargeKey]: newValue }));
+        try {
+            await updateDoc(doc(db, 'attendanceRecords', attendanceRecord.id), {
+                [`serviceDetails.${chargeKey}`]: newValue,
+                updatedAt: serverTimestamp(),
+            });
+        } catch (err) {
+            console.error('加算の更新に失敗:', err);
+            alert('加算の更新に失敗しました');
+        }
+    };
 
     useEffect(() => {
         if (serviceRecord) {
@@ -269,6 +330,43 @@ export default function ServiceRecordEditModal({
                     </Box>
                 )}
 
+                {/* 加算セクション */}
+                {enabledCharges.length > 0 && (
+                    <Box sx={{ mb: 3, bgcolor: 'rgba(15, 23, 42, 0.5)', p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <Typography variant="subtitle2" sx={{ color: '#f59e0b', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            加算
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {enabledCharges.map(charge => {
+                                const isActive = chargeStates[charge.key] || false;
+                                return (
+                                    <Chip
+                                        key={charge.key}
+                                        label={charge.label}
+                                        size="small"
+                                        clickable
+                                        onClick={() => handleChargeToggle(charge.key)}
+                                        sx={{
+                                            fontSize: '0.8rem',
+                                            height: 28,
+                                            bgcolor: isActive ? `${charge.color}30` : 'transparent',
+                                            color: isActive ? charge.color : '#94a3b8',
+                                            border: '1px solid',
+                                            borderColor: isActive ? `${charge.color}50` : '#4a556830',
+                                            cursor: 'pointer',
+                                            '&:hover': {
+                                                bgcolor: isActive ? `${charge.color}40` : '#4a556820',
+                                            },
+                                        }}
+                                    />
+                                );
+                            })}
+                        </Box>
+                    </Box>
+                )}
+
+                <Divider sx={{ bgcolor: 'rgba(255,255,255,0.1)', mb: 2 }} />
+
                 <Box sx={{ mb: 3 }}>
                     <Typography variant="subtitle2" sx={{ color: '#06b6d4', mb: 1 }}>
                         📋 活動内容（午前・午後）
@@ -284,6 +382,7 @@ export default function ServiceRecordEditModal({
                             sx={{
                                 '& .MuiOutlinedInput-root': {
                                     color: '#06b6d4',
+                                    fontSize: '0.95rem',
                                     '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
                                     '&.Mui-focused fieldset': { borderColor: '#06b6d4' },
                                 },
@@ -300,6 +399,7 @@ export default function ServiceRecordEditModal({
                             sx={{
                                 '& .MuiOutlinedInput-root': {
                                     color: '#a78bfa',
+                                    fontSize: '0.95rem',
                                     '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
                                     '&.Mui-focused fieldset': { borderColor: '#a78bfa' },
                                 },
@@ -379,6 +479,7 @@ export default function ServiceRecordEditModal({
                         sx={{
                             '& .MuiOutlinedInput-root': {
                                 color: '#fff',
+                                fontSize: '0.95rem',
                                 '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
                                 '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
                                 '&.Mui-focused fieldset': { borderColor: '#f59e0b' },
@@ -402,6 +503,7 @@ export default function ServiceRecordEditModal({
                         sx={{
                             '& .MuiOutlinedInput-root': {
                                 color: '#fff',
+                                fontSize: '0.95rem',
                                 '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
                                 '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
                                 '&.Mui-focused fieldset': { borderColor: '#10b981' },

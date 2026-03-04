@@ -20,10 +20,11 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/index';
 import { format } from 'date-fns';
 import ja from 'date-fns/locale/ja';
+import { CHARGE_FIELD_MAP } from '../../constants/chargeFields';
 
 const getDayOfWeek = (date) => {
     const days = ['日', '月', '火', '水', '木', '金', '土'];
@@ -41,6 +42,71 @@ export default function EditableServiceTable({
     const [editedRecords, setEditedRecords] = useState({});
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [enabledCharges, setEnabledCharges] = useState([]);
+    const [chargeStates, setChargeStates] = useState({});
+
+    // 支店設定から有効な加算項目を読み込み + 各レコードの加算状態を初期化
+    React.useEffect(() => {
+        const loadCharges = async () => {
+            try {
+                const branchesSnapshot = await getDocs(collection(db, 'branches'));
+                if (!branchesSnapshot.empty) {
+                    const branchData = branchesSnapshot.docs[0].data();
+                    const charges = Object.entries(CHARGE_FIELD_MAP)
+                        .filter(([fieldKey]) => branchData[fieldKey] === true)
+                        .map(([, mapping]) => mapping);
+                    if (charges.length > 0) {
+                        setEnabledCharges(charges);
+                    } else {
+                        setEnabledCharges([
+                            CHARGE_FIELD_MAP.attendanceMealSupport,
+                            CHARGE_FIELD_MAP.attendanceTransportGoing,
+                            CHARGE_FIELD_MAP.attendanceTransportReturning,
+                        ]);
+                    }
+                } else {
+                    setEnabledCharges([
+                        CHARGE_FIELD_MAP.attendanceMealSupport,
+                        CHARGE_FIELD_MAP.attendanceTransportGoing,
+                        CHARGE_FIELD_MAP.attendanceTransportReturning,
+                    ]);
+                }
+            } catch (err) {
+                console.error('支店設定の取得に失敗:', err);
+            }
+        };
+        loadCharges();
+    }, []);
+
+    // レコードからserviceDetailsの初期状態を読み込み
+    React.useEffect(() => {
+        const initial = {};
+        records.forEach(r => {
+            if (r.serviceDetails) {
+                initial[r.id] = { ...r.serviceDetails };
+            }
+        });
+        setChargeStates(initial);
+    }, [records]);
+
+    // 加算チップのトグル処理
+    const handleChargeToggle = async (recordId, chargeKey) => {
+        const current = chargeStates[recordId] || {};
+        const newValue = !current[chargeKey];
+        setChargeStates(prev => ({
+            ...prev,
+            [recordId]: { ...prev[recordId], [chargeKey]: newValue },
+        }));
+        try {
+            await updateDoc(doc(db, 'attendanceRecords', recordId), {
+                [`serviceDetails.${chargeKey}`]: newValue,
+                updatedAt: serverTimestamp(),
+            });
+        } catch (err) {
+            console.error('加算の更新に失敗:', err);
+            alert('加算の更新に失敗しました');
+        }
+    };
 
     // 編集中の値を管理
     const handleFieldChange = (recordId, field, value) => {
@@ -202,14 +268,17 @@ export default function EditableServiceTable({
                 <Table size="small" stickyHeader>
                     <TableHead>
                         <TableRow>
-                            <TableCell sx={{ bgcolor: '#0f172a', color: '#94a3b8', fontWeight: 'bold', width: 55, fontSize: '0.7rem', px: 0.5 }}>日付</TableCell>
-                            <TableCell sx={{ bgcolor: '#0f172a', color: '#94a3b8', fontWeight: 'bold', width: 40, fontSize: '0.7rem', px: 0.5 }}>形態</TableCell>
-                            <TableCell sx={{ bgcolor: '#0f172a', color: '#3b82f6', fontWeight: 'bold', width: 90, fontSize: '0.7rem', px: 0.5 }}>出退時間</TableCell>
-                            <TableCell sx={{ bgcolor: '#0f172a', color: '#06b6d4', fontWeight: 'bold', fontSize: '0.7rem', px: 0.5 }}>午前</TableCell>
-                            <TableCell sx={{ bgcolor: '#0f172a', color: '#8b5cf6', fontWeight: 'bold', fontSize: '0.7rem', px: 0.5 }}>午後</TableCell>
-                            <TableCell sx={{ bgcolor: '#0f172a', color: '#10b981', fontWeight: 'bold', fontSize: '0.7rem', px: 0.5 }}>支援内容</TableCell>
-                            <TableCell sx={{ bgcolor: '#0f172a', color: '#f59e0b', fontWeight: 'bold', fontSize: '0.7rem', px: 0.5 }}>特記</TableCell>
-                            <TableCell sx={{ bgcolor: '#0f172a', color: '#ec4899', fontWeight: 'bold', width: 80, fontSize: '0.7rem', px: 0.5 }}>連絡時間</TableCell>
+                            <TableCell sx={{ bgcolor: '#0f172a', color: '#94a3b8', fontWeight: 'bold', width: 55, fontSize: '0.8rem', px: 0.5 }}>日付</TableCell>
+                            <TableCell sx={{ bgcolor: '#0f172a', color: '#94a3b8', fontWeight: 'bold', width: 40, fontSize: '0.8rem', px: 0.5 }}>形態</TableCell>
+                            <TableCell sx={{ bgcolor: '#0f172a', color: '#3b82f6', fontWeight: 'bold', width: 95, fontSize: '0.8rem', px: 0.5 }}>出退時間</TableCell>
+                            <TableCell sx={{ bgcolor: '#0f172a', color: '#06b6d4', fontWeight: 'bold', fontSize: '0.8rem', px: 0.5 }}>午前</TableCell>
+                            <TableCell sx={{ bgcolor: '#0f172a', color: '#8b5cf6', fontWeight: 'bold', fontSize: '0.8rem', px: 0.5 }}>午後</TableCell>
+                            <TableCell sx={{ bgcolor: '#0f172a', color: '#10b981', fontWeight: 'bold', fontSize: '0.8rem', px: 0.5 }}>支援内容</TableCell>
+                            <TableCell sx={{ bgcolor: '#0f172a', color: '#f59e0b', fontWeight: 'bold', fontSize: '0.8rem', px: 0.5 }}>特記</TableCell>
+                            {enabledCharges.length > 0 && (
+                                <TableCell sx={{ bgcolor: '#0f172a', color: '#f59e0b', fontWeight: 'bold', fontSize: '0.8rem', px: 0.5 }}>加算</TableCell>
+                            )}
+                            <TableCell sx={{ bgcolor: '#0f172a', color: '#ec4899', fontWeight: 'bold', width: 80, fontSize: '0.8rem', px: 0.5 }}>連絡時間</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -224,9 +293,9 @@ export default function EditableServiceTable({
                                     }}
                                 >
                                     {/* 日付 */}
-                                    <TableCell sx={{ color: '#fff', fontSize: '0.7rem', px: 0.5 }}>
+                                    <TableCell sx={{ color: '#fff', fontSize: '0.8rem', px: 0.5 }}>
                                         {format(record.date, 'M/d', { locale: ja })}
-                                        <span style={{ color: '#64748b', fontSize: '0.6rem' }}>({getDayOfWeek(record.date)})</span>
+                                        <span style={{ color: '#64748b', fontSize: '0.7rem' }}>({getDayOfWeek(record.date)})</span>
                                     </TableCell>
                                     {/* 形態 */}
                                     <TableCell sx={{ px: 0.5 }}>
@@ -236,8 +305,8 @@ export default function EditableServiceTable({
                                             sx={{
                                                 bgcolor: isRemote ? 'rgba(139, 92, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)',
                                                 color: isRemote ? '#a78bfa' : '#10b981',
-                                                fontSize: '0.55rem',
-                                                height: 16,
+                                                fontSize: '0.65rem',
+                                                height: 18,
                                             }}
                                         />
                                     </TableCell>
@@ -250,22 +319,22 @@ export default function EditableServiceTable({
                                                 type="time"
                                                 value={getValue(record, 'startTime')}
                                                 onChange={(e) => handleFieldChange(record.id, 'startTime', e.target.value)}
-                                                inputProps={{ style: { fontSize: '0.65rem', color: '#3b82f6', padding: 0 } }}
+                                                inputProps={{ style: { fontSize: '0.75rem', color: '#3b82f6', padding: 0 } }}
                                                 sx={{
-                                                    width: 38,
+                                                    width: 45,
                                                     '& .MuiInput-root:before': { borderColor: 'rgba(255,255,255,0.1)' },
                                                 }}
                                             />
-                                            <Typography sx={{ color: '#475569', fontSize: '0.6rem' }}>〜</Typography>
+                                            <Typography sx={{ color: '#475569', fontSize: '0.7rem' }}>〜</Typography>
                                             <TextField
                                                 size="small"
                                                 variant="standard"
                                                 type="time"
                                                 value={getValue(record, 'endTime')}
                                                 onChange={(e) => handleFieldChange(record.id, 'endTime', e.target.value)}
-                                                inputProps={{ style: { fontSize: '0.65rem', color: '#ef4444', padding: 0 } }}
+                                                inputProps={{ style: { fontSize: '0.75rem', color: '#ef4444', padding: 0 } }}
                                                 sx={{
-                                                    width: 38,
+                                                    width: 45,
                                                     '& .MuiInput-root:before': { borderColor: 'rgba(255,255,255,0.1)' },
                                                 }}
                                             />
@@ -283,7 +352,7 @@ export default function EditableServiceTable({
                                             onChange={(e) => handleFieldChange(record.id, 'activitiesAmText', e.target.value)}
                                             placeholder="午前..."
                                             sx={{
-                                                '& .MuiInput-root': { color: '#06b6d4', fontSize: '0.7rem' },
+                                                '& .MuiInput-root': { color: '#06b6d4', fontSize: '0.8rem' },
                                                 '& .MuiInput-root:before': { borderColor: 'rgba(255,255,255,0.1)' },
                                             }}
                                         />
@@ -300,7 +369,7 @@ export default function EditableServiceTable({
                                             onChange={(e) => handleFieldChange(record.id, 'activitiesPmText', e.target.value)}
                                             placeholder="午後..."
                                             sx={{
-                                                '& .MuiInput-root': { color: '#8b5cf6', fontSize: '0.7rem' },
+                                                '& .MuiInput-root': { color: '#8b5cf6', fontSize: '0.8rem' },
                                                 '& .MuiInput-root:before': { borderColor: 'rgba(255,255,255,0.1)' },
                                             }}
                                         />
@@ -315,7 +384,7 @@ export default function EditableServiceTable({
                                             onChange={(e) => handleFieldChange(record.id, 'supportContent', e.target.value)}
                                             placeholder="..."
                                             sx={{
-                                                '& .MuiInput-root': { color: '#10b981', fontSize: '0.7rem' },
+                                                '& .MuiInput-root': { color: '#10b981', fontSize: '0.8rem' },
                                                 '& .MuiInput-root:before': { borderColor: 'rgba(255,255,255,0.1)' },
                                             }}
                                         />
@@ -330,11 +399,42 @@ export default function EditableServiceTable({
                                             onChange={(e) => handleFieldChange(record.id, 'specialNotes', e.target.value)}
                                             placeholder="..."
                                             sx={{
-                                                '& .MuiInput-root': { color: '#f59e0b', fontSize: '0.7rem' },
+                                                '& .MuiInput-root': { color: '#f59e0b', fontSize: '0.8rem' },
                                                 '& .MuiInput-root:before': { borderColor: 'rgba(255,255,255,0.1)' },
                                             }}
                                         />
                                     </TableCell>
+                                    {/* 加算（チップトグル） */}
+                                    {enabledCharges.length > 0 && (
+                                        <TableCell sx={{ px: 0.5 }}>
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3 }}>
+                                                {enabledCharges.map(charge => {
+                                                    const isActive = chargeStates[record.id]?.[charge.key] || false;
+                                                    return (
+                                                        <Chip
+                                                            key={charge.key}
+                                                            label={charge.label}
+                                                            size="small"
+                                                            clickable
+                                                            onClick={() => handleChargeToggle(record.id, charge.key)}
+                                                            sx={{
+                                                                fontSize: '0.65rem',
+                                                                height: 20,
+                                                                bgcolor: isActive ? `${charge.color}30` : 'transparent',
+                                                                color: isActive ? charge.color : '#94a3b8',
+                                                                border: '1px solid',
+                                                                borderColor: isActive ? `${charge.color}50` : '#4a556830',
+                                                                cursor: 'pointer',
+                                                                '&:hover': {
+                                                                    bgcolor: isActive ? `${charge.color}40` : '#4a556820',
+                                                                },
+                                                            }}
+                                                        />
+                                                    );
+                                                })}
+                                            </Box>
+                                        </TableCell>
+                                    )}
                                     {/* 連絡時間（在宅のみ編集可能） */}
                                     <TableCell sx={{ px: 0.5 }}>
                                         {isRemote ? (
@@ -346,12 +446,12 @@ export default function EditableServiceTable({
                                                     onChange={(e) => handleFieldChange(record.id, 'remoteContactTimeMorning', e.target.value)}
                                                     placeholder="朝"
                                                     sx={{
-                                                        width: 35,
-                                                        '& .MuiInput-root': { color: '#ec4899', fontSize: '0.65rem' },
+                                                        width: 40,
+                                                        '& .MuiInput-root': { color: '#ec4899', fontSize: '0.75rem' },
                                                         '& .MuiInput-root:before': { borderColor: 'rgba(255,255,255,0.1)' },
                                                     }}
                                                 />
-                                                <Typography sx={{ color: '#64748b', fontSize: '0.6rem' }}>〜</Typography>
+                                                <Typography sx={{ color: '#64748b', fontSize: '0.7rem' }}>〜</Typography>
                                                 <TextField
                                                     size="small"
                                                     variant="standard"
@@ -359,14 +459,14 @@ export default function EditableServiceTable({
                                                     onChange={(e) => handleFieldChange(record.id, 'remoteContactTimeEvening', e.target.value)}
                                                     placeholder="夕"
                                                     sx={{
-                                                        width: 35,
-                                                        '& .MuiInput-root': { color: '#ec4899', fontSize: '0.65rem' },
+                                                        width: 40,
+                                                        '& .MuiInput-root': { color: '#ec4899', fontSize: '0.75rem' },
                                                         '& .MuiInput-root:before': { borderColor: 'rgba(255,255,255,0.1)' },
                                                     }}
                                                 />
                                             </Box>
                                         ) : (
-                                            <Typography sx={{ color: '#475569', fontSize: '0.65rem' }}>-</Typography>
+                                            <Typography sx={{ color: '#475569', fontSize: '0.75rem' }}>-</Typography>
                                         )}
                                     </TableCell>
                                 </TableRow>
