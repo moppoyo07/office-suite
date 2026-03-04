@@ -140,18 +140,19 @@ export default function ServiceRecordListPage() {
         return { pendingRecords: pending, completedRecords: completed };
     }, [attendanceRecords, serviceRecords]);
 
-    // 未入力レコードを担当者ごとにグループ化
-    const pendingByStaff = useMemo(() => {
-        const staffMap = new Map();
+    // 未入力レコードを利用者ごとにグループ化
+    const pendingByClient = useMemo(() => {
+        const clientMap = new Map();
         pendingRecords.forEach(record => {
-            const staffName = record.staffName || 'セルフチェックイン';
-            if (!staffMap.has(staffName)) {
-                staffMap.set(staffName, []);
+            const clientName = record.clientName || '名前なし';
+            const clientId = record.clientId;
+            if (!clientMap.has(clientId)) {
+                clientMap.set(clientId, { clientName, records: [] });
             }
-            staffMap.get(staffName).push(record);
+            clientMap.get(clientId).records.push(record);
         });
-        // 名前順にソート
-        return Array.from(staffMap.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ja'));
+        // 利用者名順にソート
+        return Array.from(clientMap.values()).sort((a, b) => a.clientName.localeCompare(b.clientName, 'ja'));
     }, [pendingRecords]);
 
     // 印刷可能かどうか（入力済みが1件以上あればOK）
@@ -393,32 +394,32 @@ export default function ServiceRecordListPage() {
                             '&::-webkit-scrollbar': { height: 6 },
                             '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.2)', borderRadius: 3 },
                         }}>
-                            {pendingByStaff.map(([staffName, records]) => (
+                            {pendingByClient.map(({ clientName, records }) => (
                                 <Box
-                                    key={staffName}
+                                    key={records[0].clientId}
                                     sx={{
-                                        minWidth: 160,
-                                        maxWidth: 200,
+                                        minWidth: 140,
+                                        maxWidth: 180,
                                         flexShrink: 0,
                                     }}
                                 >
-                                    {/* 担当者ヘッダー */}
+                                    {/* 利用者名ヘッダー */}
                                     <Paper sx={{
                                         p: 1,
                                         mb: 1,
-                                        bgcolor: 'rgba(139, 92, 246, 0.15)',
-                                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                                        bgcolor: 'rgba(245, 158, 11, 0.15)',
+                                        border: '1px solid rgba(245, 158, 11, 0.3)',
                                         textAlign: 'center',
                                         borderRadius: 1,
                                     }}>
-                                        <Typography variant="body2" sx={{ color: '#a78bfa', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                                            {staffName}
+                                        <Typography variant="body2" sx={{ color: '#f59e0b', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                            {clientName}
                                         </Typography>
                                         <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                                             {records.length}件
                                         </Typography>
                                     </Paper>
-                                    {/* カード縦並び */}
+                                    {/* 日付カード縦並び */}
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                                         {records.map(record => (
                                             <Card
@@ -431,9 +432,9 @@ export default function ServiceRecordListPage() {
                                             >
                                                 <CardActionArea onClick={() => handleCardClick(record)}>
                                                     <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                            <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#fff', fontSize: '0.8rem' }}>
-                                                                {record.clientName || '名前なし'}
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <Typography variant="body2" sx={{ color: '#fff', fontSize: '0.8rem' }}>
+                                                                {format(record.date, 'M/d', { locale: ja })} ({getDayOfWeek(record.date)})
                                                             </Typography>
                                                             {record.attendanceType === 'remote' && (
                                                                 <Chip
@@ -443,8 +444,8 @@ export default function ServiceRecordListPage() {
                                                                 />
                                                             )}
                                                         </Box>
-                                                        <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', fontSize: '0.7rem' }}>
-                                                            {format(record.date, 'M/d', { locale: ja })} ({getDayOfWeek(record.date)}) {roundTo30Min(record.startTime) || '--:--'}〜
+                                                        <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.7rem' }}>
+                                                            {roundTo30Min(record.startTime) || '--:--'}〜
                                                         </Typography>
                                                     </CardContent>
                                                 </CardActionArea>
