@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import HomeIcon from '@mui/icons-material/Home';
 import BusinessIcon from '@mui/icons-material/Business';
 import WheelPicker from '../../components/WheelPicker';
+import { roundTo30Min } from '../../utils/roundTime';
 
 const MEDICATION_OPTIONS = [
     { value: 'taken', label: '飲んだ' },
@@ -162,7 +163,8 @@ export default function ClientCheckinPage() {
             const now = new Date();
             const today = format(now, 'yyyy-MM-dd');
             const docId = `${client.id}_${today}`;
-            const arrivalTime = format(now, 'HH:mm');
+            const arrivalTimeRaw = format(now, 'HH:mm');
+            const arrivalTime = roundTo30Min(arrivalTimeRaw);
 
             // 1. dailyCheckinsに健康情報を保存
             await setDoc(doc(db, 'dailyCheckins', docId), {

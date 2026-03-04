@@ -25,6 +25,7 @@ import { db } from '../../firebase/index';
 import { format } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import { CHARGE_FIELD_MAP } from '../../constants/chargeFields';
+import { roundTo30Min } from '../../utils/roundTime';
 
 const getDayOfWeek = (date) => {
     const days = ['日', '月', '火', '水', '木', '金', '土'];
@@ -128,7 +129,7 @@ export default function EditableServiceTable({
         }
         const timeFields = ['startTime', 'endTime'];
         if (timeFields.includes(field)) {
-            return record[field] || '';
+            return roundTo30Min(record[field] || '') || '';
         }
         if (record.serviceRecord?.[field] !== undefined) {
             return record.serviceRecord[field];
@@ -189,7 +190,12 @@ export default function EditableServiceTable({
                 const attendanceUpdates = {};
                 for (const field of attendanceFields) {
                     if (changes[field] !== undefined) {
-                        attendanceUpdates[field] = changes[field];
+                        // startTime/endTimeは30分単位に丸める
+                        if (field === 'startTime' || field === 'endTime') {
+                            attendanceUpdates[field] = roundTo30Min(changes[field]);
+                        } else {
+                            attendanceUpdates[field] = changes[field];
+                        }
                     }
                 }
                 if (Object.keys(attendanceUpdates).length > 0) {

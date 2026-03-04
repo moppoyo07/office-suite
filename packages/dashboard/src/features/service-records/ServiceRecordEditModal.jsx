@@ -23,6 +23,7 @@ import { format } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import { useAuth } from '../auth/context/AuthContext';
 import { CHARGE_FIELD_MAP } from '../../constants/chargeFields';
+import { roundTo30Min } from '../../utils/roundTime';
 
 export default function ServiceRecordEditModal({
     open,
@@ -184,8 +185,8 @@ export default function ServiceRecordEditModal({
                 clientId: attendanceRecord.clientId,
                 clientName: attendanceRecord.clientName || '',
                 date: Timestamp.fromDate(attendanceRecord.date),
-                startTime: attendanceRecord.startTime || '',
-                endTime: attendanceRecord.endTime || '',
+                startTime: roundTo30Min(attendanceRecord.startTime || '') || '',
+                endTime: roundTo30Min(attendanceRecord.endTime || '') || '',
                 attendanceType: attendanceRecord.attendanceType || 'onsite',
                 activitiesAm: form.activitiesAmText.split(/[,、]/).map(s => s.trim()).filter(s => s),
                 activitiesPm: form.activitiesPmText.split(/[,、]/).map(s => s.trim()).filter(s => s),
@@ -266,7 +267,7 @@ export default function ServiceRecordEditModal({
                         {format(attendanceRecord.date, 'yyyy年M月d日', { locale: ja })} ({getDayOfWeek(attendanceRecord.date)})
                     </Typography>
                     <Typography variant="body2" sx={{ color: '#94a3b8' }}>
-                        {attendanceRecord.startTime || '--:--'} 〜 {attendanceRecord.endTime || '--:--'}
+                        {roundTo30Min(attendanceRecord.startTime) || '--:--'} 〜 {roundTo30Min(attendanceRecord.endTime) || '--:--'}
                     </Typography>
                 </Box>
 

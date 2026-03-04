@@ -11,6 +11,7 @@ import { collection, doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/index';
 import { useClientAuth } from './context/ClientAuthContext';
 import { format } from 'date-fns';
+import { roundTo30Min } from '../../utils/roundTime';
 
 export default function ClientCheckoutPage() {
     const { client } = useClientAuth();
@@ -69,7 +70,7 @@ export default function ClientCheckoutPage() {
         try {
             const docId = `${client.id}_${today}`;
             const now = Timestamp.now();
-            const departureTime = format(new Date(), 'HH:mm');
+            const departureTime = roundTo30Min(format(new Date(), 'HH:mm'));
 
             // 活動内容を配列形式に変換（サービス記録用）
             // 改行で分割して配列にするか、そのまま配列の1要素にするか
