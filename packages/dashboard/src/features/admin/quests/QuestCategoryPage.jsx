@@ -1,7 +1,8 @@
 // src/features/admin/quests/QuestCategoryPage.jsx
 // クエストカテゴリ管理ページ
-// - branch_manager: カテゴリの追加・編集（ポイント設定不可）
-// - company_admin / platform_owner: ポイント設定も可能
+// - branch_staff: カテゴリの追加のみ（ポイント設定・削除・有効無効切替不可）
+// - branch_manager: カテゴリの追加・編集・削除・有効無効切替・ポイント設定
+// - company_admin / platform_owner: 全操作可能
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -22,8 +23,8 @@ import {
 import { db } from '../../../firebase';
 import { useCurrentUser } from '../../../hooks/useCurrentUser';
 
-// オーナーのみポイント設定可能
-const POINT_ADMIN_ROLES = ['platform_owner', 'company_admin'];
+// 支店管理者以上がポイント設定可能
+const POINT_ADMIN_ROLES = ['platform_owner', 'company_admin', 'branch_manager'];
 
 // デフォルトカテゴリ（シード用）
 // ※面談・見学・体験・追客・質疑は活動ログで記録するためクエスト対象外
@@ -44,6 +45,8 @@ const emptyForm = { label: '', description: '', points: 10 };
 export default function QuestCategoryPage() {
   const { profile, role, loading: userLoading } = useCurrentUser();
   const canEditPoints = POINT_ADMIN_ROLES.includes(role);
+  // スタッフはカテゴリ追加のみ（削除・有効無効切替・デフォルト追加は支店管理者以上）
+  const canManage = POINT_ADMIN_ROLES.includes(role);
 
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -217,11 +220,11 @@ export default function QuestCategoryPage() {
           <Typography variant="body2" color="text.secondary" mt={0.5}>
             {canEditPoints
               ? 'カテゴリの追加・編集とポイント設定ができます'
-              : '活動カテゴリを追加・管理できます（ポイント設定はオーナーが行います）'}
+              : '活動カテゴリを追加できます（ポイント設定は支店管理者以上が行います）'}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          {categories.length === 0 && (
+          {categories.length === 0 && canManage && (
             <Button
               variant="outlined"
               startIcon={<DownloadingIcon />}
@@ -249,7 +252,7 @@ export default function QuestCategoryPage() {
         <Chip label={`無効: ${inactiveCount}件`} color="default" size="small" variant="outlined" />
         {!canEditPoints && (
           <Alert severity="info" sx={{ py: 0, px: 1.5, fontSize: '0.75rem' }}>
-            ポイント数はオーナーが設定します。未設定のカテゴリは 0pt と表示されます。
+            ポイント数は支店管理者以上が設定します。未設定のカテゴリは 0pt と表示されます。
           </Alert>
         )}
       </Stack>
@@ -298,12 +301,22 @@ export default function QuestCategoryPage() {
                   )}
                 </TableCell>
                 <TableCell align="center">
-                  <Switch
-                    checked={cat.isActive}
-                    onChange={() => handleToggleActive(cat)}
-                    size="small"
-                    color="success"
-                  />
+                  {canManage ? (
+                    <Switch
+                      checked={cat.isActive}
+                      onChange={() => handleToggleActive(cat)}
+                      size="small"
+                      color="success"
+                    />
+                  ) : (
+                    <Chip
+                      label={cat.isActive ? '有効' : '無効'}
+                      size="small"
+                      color={cat.isActive ? 'success' : 'default'}
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  )}
                 </TableCell>
                 <TableCell align="center">
                   <Stack direction="row" spacing={0.5} justifyContent="center">
@@ -312,11 +325,13 @@ export default function QuestCategoryPage() {
                         <EditIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="削除">
-                      <IconButton size="small" onClick={() => setDeleteConfirm({ open: true, target: cat })} sx={{ color: '#ef4444' }}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    {canManage && (
+                      <Tooltip title="削除">
+                        <IconButton size="small" onClick={() => setDeleteConfirm({ open: true, target: cat })} sx={{ color: '#ef4444' }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   </Stack>
                 </TableCell>
               </TableRow>
@@ -362,7 +377,7 @@ export default function QuestCategoryPage() {
               />
             ) : (
               <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
-                ポイント数はオーナーが設定します。追加後にオーナーへご連絡ください。
+                ポイント数は支店管理者以上が設定します。追加後にご連絡ください。
               </Alert>
             )}
           </Stack>

@@ -13,6 +13,13 @@ import {
     IconButton,
     Divider,
     Collapse,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+    Stack,
 } from '@mui/material';
 import {
     CheckCircle as CheckCircleIcon,
@@ -20,6 +27,7 @@ import {
     EmojiEvents as TrophyIcon,
     KeyboardArrowDown as ArrowDownIcon,
     KeyboardArrowUp as ArrowUpIcon,
+    Add as AddIcon,
 } from '@mui/icons-material';
 import { doc, setDoc, addDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/index';
@@ -34,14 +42,19 @@ const FALLBACK_QUESTS = [
     { id: 'blog_post',       label: 'ブログ更新',               points: 30 },
 ];
 
-// ポイントを閲覧できるロール
-const POINT_VISIBLE_ROLES = ['platform_owner', 'company_admin'];
+// ポイントを閲覧できるロール（支店管理者以上）
+const POINT_VISIBLE_ROLES = ['platform_owner', 'company_admin', 'branch_manager'];
 
 export default function DailyQuestBoard({ currentUser }) {
     const [loading, setLoading] = useState(true);
     const [tasks, setTasks] = useState([]);
     const [todayPoints, setTodayPoints] = useState(0);
     const [isExpanded, setIsExpanded] = useState(true);
+
+    // クエスト追加ダイアログ
+    const [addDialog, setAddDialog] = useState(false);
+    const [addForm, setAddForm] = useState({ label: '', description: '' });
+    const [addSaving, setAddSaving] = useState(false);
 
     // ポイント表示権限（オーナー・会社管理者のみ）
     const canSeePoints = POINT_VISIBLE_ROLES.includes(currentUser?.role);
@@ -167,6 +180,35 @@ export default function DailyQuestBoard({ currentUser }) {
         }
     };
 
+    // クエストカテゴリ追加（スタッフ用：ポイントは0で作成、後から管理者が設定）
+    const handleAddQuest = async () => {
+        if (!addForm.label.trim() || !currentUser?.companyId) return;
+        setAddSaving(true);
+        try {
+            await addDoc(collection(db, 'questCategories'), {
+                label: addForm.label.trim(),
+                description: addForm.description.trim(),
+                points: 0,
+                companyId: currentUser.companyId,
+                branchId: currentUser.branchId || null,
+                isActive: true,
+                createdBy: currentUser.uid || '',
+                createdByName: currentUser.displayName || '',
+                createdByRole: currentUser.role || '',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+            setAddDialog(false);
+            setAddForm({ label: '', description: '' });
+            await fetchDailyProgress();
+        } catch (error) {
+            console.error('クエスト追加エラー:', error);
+            alert('追加に失敗しました');
+        } finally {
+            setAddSaving(false);
+        }
+    };
+
     const completedCount = tasks.filter(t => t.status === 'completed').length;
     const progressRate = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
@@ -211,7 +253,7 @@ export default function DailyQuestBoard({ currentUser }) {
                     </Box>
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Box sx={{ textAlign: 'right' }}>
                         <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>
                             本日の完了
@@ -220,6 +262,15 @@ export default function DailyQuestBoard({ currentUser }) {
                             {completedCount} / {tasks.length}
                         </Typography>
                     </Box>
+                    {currentUser?.companyId && (
+                        <IconButton
+                            onClick={() => setAddDialog(true)}
+                            size="small"
+                            sx={{ color: '#8b5cf6', bgcolor: 'rgba(139,92,246,0.1)', '&:hover': { bgcolor: 'rgba(139,92,246,0.2)' } }}
+                        >
+                            <AddIcon fontSize="small" />
+                        </IconButton>
+                    )}
                     <IconButton onClick={() => setIsExpanded(!isExpanded)} sx={{ color: '#cbd5e1' }}>
                         {isExpanded ? <ArrowUpIcon /> : <ArrowDownIcon />}
                     </IconButton>
@@ -303,6 +354,43 @@ export default function DailyQuestBoard({ currentUser }) {
                     </Box>
                 )}
             </Collapse>
+
+            {/* クエスト追加ダイアログ */}
+            <Dialog open={addDialog} onClose={() => setAddDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>クエストを追加</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField
+                            label="クエスト名"
+                            value={addForm.label}
+                            onChange={e => setAddForm(p => ({ ...p, label: e.target.value }))}
+                            fullWidth
+                            required
+                            autoFocus
+                            placeholder="例：Instagram投稿、見学対応、追客電話"
+                        />
+                        <TextField
+                            label="説明（任意）"
+                            value={addForm.description}
+                            onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))}
+                            fullWidth
+                            multiline
+                            rows={2}
+                            placeholder="例：公式インスタグラムへの投稿業務"
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                            ポイントは支店管理者が後から設定します。
+                        </Typography>
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setAddDialog(false)} color="inherit">キャンセル</Button>
+                    <Button onClick={handleAddQuest} variant="contained" disabled={addSaving || !addForm.label.trim()}
+                        sx={{ bgcolor: '#8b5cf6', '&:hover': { bgcolor: '#7c3aed' } }}>
+                        {addSaving ? '追加中...' : '追加'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Paper>
     );
 }
