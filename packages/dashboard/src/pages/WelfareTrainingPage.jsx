@@ -1,7 +1,8 @@
 // src/pages/WelfareTrainingPage.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { collection, query, where, getDocs, Timestamp, or, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from '../features/auth/context/AuthContext';
 import {
     Box, Container, Typography, Paper, TextField, Button,
     Table, TableBody, TableCell, TableHead, TableRow,
@@ -11,8 +12,25 @@ import {
 import { Print, Save, Refresh, People, School, DirectionsBus, TrendingUp } from '@mui/icons-material';
 import { getTemplate, getConfig } from '../templates';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { useTenant } from '../context/TenantContext';
 
 export default function WelfareTrainingPage() {
+    const { currentUser } = useAuth();
+    const { currentTenant } = useTenant();
+    const isPlatform = ['platform_owner', 'platform_staff'].includes(currentUser?.role);
+
+    // platform_ownerは会社を選んで切り替え可能
+    const [selectedCompanyId, setSelectedCompanyId] = useState(null);
+    const [companies, setCompanies] = useState([]);
+
+    const companyId = isPlatform ? selectedCompanyId : (currentUser?.companyId || null);
+
+    // 選択中企業のwelfareTrainingType（platform_ownerが企業切り替えした場合はそちらを優先）
+    const activeCompany = isPlatform
+        ? companies.find(c => c.id === selectedCompanyId) || null
+        : currentTenant?.company || null;
+    const welfareTrainingType = activeCompany?.welfareTrainingType ?? 'both';
+
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [municipality, setMunicipality] = useState('');
@@ -26,12 +44,32 @@ export default function WelfareTrainingPage() {
     const [templateConfig, setTemplateConfig] = useState(null);
     const [templateLoading, setTemplateLoading] = useState(false);
 
-    // 自治体リストを取得
+    // platform_owner用: 会社一覧を取得
     useEffect(() => {
+        if (!isPlatform) return;
+        const fetchCompanies = async () => {
+            try {
+                const snap = await getDocs(query(collection(db, 'companies'), orderBy('createdAt', 'desc')));
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setCompanies(list);
+                if (list.length > 0 && !selectedCompanyId) {
+                    setSelectedCompanyId(list[0].id);
+                }
+            } catch (err) {
+                console.error('企業一覧取得エラー:', err);
+            }
+        };
+        fetchCompanies();
+    }, [isPlatform]);
+
+    // 自治体リストを取得（companyIdでフィルタリング）
+    useEffect(() => {
+        if (!companyId) return; // companyIdが確定するまで待つ
         const fetchMunicipalities = async () => {
             try {
                 const q = query(
                     collection(db, 'municipalities'),
+                    where('companyId', '==', companyId),
                     where('isActive', '==', true)
                 );
                 const snapshot = await getDocs(q);
@@ -41,9 +79,10 @@ export default function WelfareTrainingPage() {
 
                 list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
                 setMunicipalities(list);
+                setMunicipality(''); // 会社が変わったらリセット
 
                 // 初期選択（もしあれば）
-                if (list.length > 0 && !municipality) {
+                if (list.length > 0) {
                     setMunicipality(list[0].billingName);
                 }
             } catch (err) {
@@ -51,14 +90,7 @@ export default function WelfareTrainingPage() {
             }
         };
         fetchMunicipalities();
-    }, []); // 空の依存配列で初回マウント時のみ実行
-
-    // 初期自治体設定 (自治体リストがロードされた後に実行)
-    useEffect(() => {
-        if (municipalities.length > 0 && !municipality) {
-            setMunicipality(municipalities[0].billingName);
-        }
-    }, [municipalities, municipality]);
+    }, [companyId]); // companyIdが変わるたびに再取得
 
     // 自治体変更時にテンプレートを動的ロード
     useEffect(() => {
@@ -107,13 +139,11 @@ export default function WelfareTrainingPage() {
         try {
             // 利用中の利用者を取得（選択した自治体でフィルタリング）
             // まず利用中の利用者を全て取得し、クライアント側で自治体フィルタリング
-            const clientsRef = collection(db, 'clients');
+            const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
             const q = query(
-                clientsRef,
-                or(
-                    where('status', '==', 'active_onsite'),
-                    where('status', '==', 'active_remote')
-                )
+                collection(db, 'clients'),
+                ...companyFilter,
+                where('status', 'in', ['active_onsite', 'active_remote'])
             );
             const snapshot = await getDocs(q);
 
@@ -298,12 +328,12 @@ export default function WelfareTrainingPage() {
         return parts.join(' ');
     };
 
-    // 年月・自治体変更時に自動取得
+    // 年月・自治体・会社変更時に自動取得
     useEffect(() => {
-        if (municipality) {
+        if (municipality && (companyId || !isPlatform)) {
             fetchData();
         }
-    }, [year, month, municipality]);
+    }, [year, month, municipality, companyId]);
 
     // ブラウザの印刷機能を使用
     const handlePrint = () => {
@@ -353,8 +383,52 @@ export default function WelfareTrainingPage() {
 
     const summaryData = calculateSummary(clients);
 
+    // 更生訓練費が対象外の事業所はアクセス不可
+    if (welfareTrainingType === 'none') {
+        return (
+            <Container maxWidth="sm" sx={{ py: 6, textAlign: 'center' }}>
+                <Typography variant="h1" sx={{ mb: 2 }}>🚫</Typography>
+                <Typography variant="h5" fontWeight="bold" gutterBottom>
+                    この事業所は更生訓練費の対象外です
+                </Typography>
+                <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    更生訓練費が発生する場合は、管理画面の企業設定で「更生訓練費の種別」を変更してください。
+                </Typography>
+                <Button variant="outlined" onClick={() => window.history.back()}>戻る</Button>
+            </Container>
+        );
+    }
+
     return (
         <Container maxWidth="xl" sx={{ py: 3 }}>
+            {/* GrandAdmin用: 会社切り替えバー */}
+            {isPlatform && (
+                <Paper sx={{ p: 1.5, mb: 2, bgcolor: 'rgba(255,152,0,0.1)', border: '1px solid rgba(255,152,0,0.3)' }}>
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                        <Typography variant="body2" fontWeight="bold" color="warning.main">
+                            🔑 閲覧会社:
+                        </Typography>
+                        <FormControl size="small" sx={{ minWidth: 240 }}>
+                            <Select
+                                value={selectedCompanyId || ''}
+                                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                                displayEmpty
+                            >
+                                <MenuItem value="" disabled>会社を選択してください</MenuItem>
+                                {companies.map(c => (
+                                    <MenuItem key={c.id} value={c.id}>
+                                        {c.name || c.id}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <Typography variant="caption" color="text.secondary">
+                            platform_ownerはここで会社を切り替えて閲覧できます
+                        </Typography>
+                    </Stack>
+                </Paper>
+            )}
+
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
                 <Typography variant="h5" fontWeight="bold">厚生訓練費 請求管理</Typography>
                 <Stack direction="row" spacing={2}>

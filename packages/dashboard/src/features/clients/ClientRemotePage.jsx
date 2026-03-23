@@ -3,12 +3,15 @@ import { Box, CircularProgress, Grid, Paper, Typography } from '@mui/material';
 import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase/index.js";
 import { useClientUpdater } from '../../hooks/useClientUpdater';
+import { useTenant } from '../../context/TenantContext';
 import ClientCard from './ClientCard.jsx';
 import EmploymentInfoModal from './components/EmploymentInfoModal.jsx';
 import LostReasonModal from './components/LostReasonModal.jsx';
 import RetentionPlanInputModal from './components/RetentionPlanInputModal.jsx';
 
 function ClientRemotePage() {
+  const { activeCompanyId: companyId } = useTenant();
+
   // --- Stateや関数定義は変更なし ---
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,21 +26,23 @@ function ClientRemotePage() {
   const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, "clients"), where("status", "==", "active_remote"));
+      const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+      const q = query(collection(db, "clients"), ...companyFilter, where("status", "==", "active_remote"));
       const querySnapshot = await getDocs(q);
       setClients(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) { console.error("利用者データの取得に失敗しました:", error); }
     finally { setLoading(false); }
-  }, []);
+  }, [companyId]);
 
   const { graduateClient } = useClientUpdater(fetchClients);
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
   useEffect(() => {
-    const q = query(collection(db, "clients"), where("status", "in", ["closed", "closed-lost"]), where("lostAtPhase", "==", "active_remote"));
+    const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+    const q = query(collection(db, "clients"), ...companyFilter, where("status", "in", ["closed", "closed-lost"]), where("lostAtPhase", "==", "active_remote"));
     const unsubscribe = onSnapshot(q, (snapshot) => { setRetirementCount(snapshot.size); }, (error) => { console.error("退所者数の取得に失敗しました:", error); });
     return () => unsubscribe();
-  }, []);
+  }, [companyId]);
   const handleUpdateStatus = useCallback(async (clientId, newStatus) => {
     try {
       await updateDoc(doc(db, "clients", clientId), { status: newStatus });

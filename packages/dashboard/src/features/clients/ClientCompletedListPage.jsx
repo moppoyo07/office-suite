@@ -7,10 +7,11 @@ import {
   FormControl, InputLabel, Select, MenuItem, Stack, Divider, IconButton,
 } from '@mui/material';
 import { Description } from '@mui/icons-material';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { addMonths, format, getYear, getMonth } from 'date-fns';
 import useRetentionRate from '../../hooks/useRetentionRate';
+import { useTenant } from '../../context/TenantContext';
 import RetentionReportListModal from '../retention/RetentionReportListModal';
 
 // --- ヘルパー関数 ---
@@ -71,6 +72,8 @@ const getStatusInfo = (client) => {
 };
 
 const ClientCompletedListPage = () => {
+  const { activeCompanyId: companyId } = useTenant();
+
   const [targetClients, setTargetClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [targetYear, setTargetYear] = useState(() => {
@@ -84,13 +87,20 @@ const ClientCompletedListPage = () => {
   useEffect(() => {
     const fetchTargetClients = async () => {
       try {
+        const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
         const targetStatuses = [
           'completed', 'retired', 'closed', 'closed-lost',
           'follow-up-m1', 'follow-up-m2', 'follow-up-m3', 'follow-up-m4', 'follow-up-m5', 'follow-up-m6'
         ];
-        const q = query(collection(db, 'clients'), where('status', 'in', targetStatuses), orderBy('employmentDate', 'desc'));
+        const q = query(collection(db, 'clients'), ...companyFilter, where('status', 'in', targetStatuses));
         const querySnapshot = await getDocs(q);
-        setTargetClients(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        const clients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        clients.sort((a, b) => {
+            const aDate = a.employmentDate?.toDate?.() || new Date(0);
+            const bDate = b.employmentDate?.toDate?.() || new Date(0);
+            return bDate - aDate;
+        });
+        setTargetClients(clients);
       } catch (error) {
         console.error("データ取得失敗:", error);
       } finally {
@@ -98,7 +108,7 @@ const ClientCompletedListPage = () => {
       }
     };
     fetchTargetClients();
-  }, []);
+  }, [companyId]);
 
   // 年度選択肢作成
   const currentFiscalYear = new Date().getMonth() < 3 ? new Date().getFullYear() - 1 : new Date().getFullYear();

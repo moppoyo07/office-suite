@@ -36,6 +36,7 @@ import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 import { CLIENT_STATUS } from '../constants/clientStatus';
 import ActivityLogForm from '../features/clients/components/ActivityLogForm.jsx';
 import { useActivityLog } from '../hooks/useActivityLog';
+import { useTenant } from '../context/TenantContext';
 
 // 活動種別ラベル
 const ACTIVITY_TYPE_LABELS = {
@@ -61,6 +62,7 @@ const TABS = [
 
 export default function FollowUpListPage() {
     const navigate = useNavigate();
+    const { activeCompanyId: companyId } = useTenant();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('inquiry');
@@ -95,8 +97,10 @@ export default function FollowUpListPage() {
                     'follow-up-m6',
                 ];
 
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
                 const q = query(
                     collection(db, 'clients'),
+                    ...companyFilter,
                     where('status', 'in', targetStatuses)
                 );
                 const snapshot = await getDocs(q);
@@ -110,7 +114,7 @@ export default function FollowUpListPage() {
         };
 
         fetchClients();
-    }, []);
+    }, [companyId]);
 
     // タブごとにクライアントをフィルタリング
     const filteredClients = useMemo(() => {

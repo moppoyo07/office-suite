@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collectionGroup, query, orderBy, limit, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collectionGroup, query, orderBy, limit, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/index.js';
+import { useTenant } from '../context/TenantContext';
 
 // クライアント名のキャッシュ（セッション中に同じclientIdの再取得を防ぐ）
 const clientNameCache = {};
@@ -29,6 +30,8 @@ async function resolveClientName(clientId) {
  * clientNameがない既存ログはクライアントドキュメントから名前を解決する
  */
 export const useActivityFeed = (maxItems = 30) => {
+    const { activeCompanyId: companyId } = useTenant();
+
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -38,8 +41,10 @@ export const useActivityFeed = (maxItems = 30) => {
         setError(null);
 
         try {
+            const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
             const logsQuery = query(
                 collectionGroup(db, 'activity_logs'),
+                ...companyFilter,
                 orderBy('createdAt', 'desc'),
                 limit(maxItems)
             );
@@ -99,7 +104,7 @@ export const useActivityFeed = (maxItems = 30) => {
             setError(err.message);
             setLoading(false);
         }
-    }, [maxItems]);
+    }, [maxItems, companyId]);
 
     // スタッフ別の今日の活動件数を集計
     const staffStats = useMemo(() => {

@@ -246,6 +246,17 @@ export const COMPANY_FIELDS = {
         section: COMPANY_SECTIONS.WELFARE,
         type: 'text',
     },
+    welfareTrainingType: {
+        label: '更生訓練費の種別',
+        section: COMPANY_SECTIONS.WELFARE,
+        type: 'select',
+        options: [
+            { value: 'none', label: 'なし（制度対象外）' },
+            { value: 'both', label: '訓練費 + 交通費' },
+            { value: 'transport_only', label: '交通費のみ' },
+        ],
+        helperText: '自治体から支給される更生訓練費の種別を選択',
+    },
 
     // === 銀行口座 ===
     bankName: {

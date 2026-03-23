@@ -170,6 +170,7 @@ export default function ClientCheckinPage() {
             await setDoc(doc(db, 'dailyCheckins', docId), {
                 clientId: client.id,
                 clientName: client.name,
+                companyId: client.companyId,
                 date: today,
                 type: 'daily', // 念のため
                 attendanceType: form.attendanceType, // 保存追加
@@ -206,6 +207,7 @@ export default function ClientCheckinPage() {
             await setDoc(doc(db, 'attendanceRecords', docId), {
                 clientId: client.id,
                 clientName: client.name,
+                companyId: client.companyId,
                 date: Timestamp.now(),
                 status: 'present',
                 attendanceType: form.attendanceType, // 通所 or 在宅

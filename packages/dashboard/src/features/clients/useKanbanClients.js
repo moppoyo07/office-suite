@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "../../firebase/index.js";
 import { useActivityLog } from '../../hooks/useActivityLog';
+import { useTenant } from '../../context/TenantContext';
 import { CLIENT_STATUS, STATUS_CONFIG } from '../../constants/clientStatus';
 
 // カンバンの列定義
@@ -24,6 +25,7 @@ const TRANSITION_DATE_REQUIRED = {
 export function useKanbanClients() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { activeCompanyId: companyId } = useTenant();
 
   // --- モーダル用State ---
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
@@ -52,7 +54,8 @@ export function useKanbanClients() {
       const statuses = kanbanColumns.map(col => col.id);
       statuses.push(CLIENT_STATUS.CLOSED);
 
-      const q = query(collection(db, "clients"), where("status", "in", statuses));
+      const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+      const q = query(collection(db, "clients"), ...companyFilter, where("status", "in", statuses));
       const querySnapshot = await getDocs(q);
       setClients(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
@@ -60,7 +63,7 @@ export function useKanbanClients() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 

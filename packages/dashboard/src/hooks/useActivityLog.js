@@ -56,6 +56,7 @@ export const useActivityLog = () => {
                 createdAt: serverTimestamp(),
                 staffUid,
                 staffName,
+                companyId: currentUser?.companyId || null,
             });
 
             // 電話 or メール の場合、次回予定日を自動計算してクライアントに書き込む

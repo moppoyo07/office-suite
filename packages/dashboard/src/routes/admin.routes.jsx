@@ -18,6 +18,7 @@ import UserListPage from '../features/admin/users/UserListPage.jsx';
 import UserCreatePage from '../features/admin/users/UserCreatePage.jsx';
 import UserDetailPage from '../features/admin/users/UserDetailPage.jsx';
 import AdminCleanupPage from '../pages/AdminCleanupPage.jsx';
+import AdminDataMigrationPage from '../pages/AdminDataMigrationPage.jsx';
 import NewApplicationChecklistPage from '../pages/NewApplicationChecklistPage.jsx';
 import ApplicationForm1Page from '../pages/forms/ApplicationForm1Page.jsx';
 import StaffWorkSchedulePage from '../pages/StaffWorkSchedulePage.jsx';
@@ -88,6 +89,7 @@ export default function AdminRoutes() {
 
                     {/* システムツール */}
                     <Route path="cleanup" element={<AdminCleanupPage />} />
+                    <Route path="data-migration" element={<AdminDataMigrationPage />} />
 
                     {/* クエストカテゴリ管理 */}
                     <Route path="quest-categories" element={<QuestCategoryPage />} />

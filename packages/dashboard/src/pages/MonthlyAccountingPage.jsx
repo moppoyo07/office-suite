@@ -8,14 +8,18 @@ import {
     FormControl, InputLabel, Select, MenuItem, Stack, Chip
 } from '@mui/material';
 import { Print, PeopleAlt } from '@mui/icons-material';
-import { collection, query, where, getDocs, or, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
+import { useTenant } from '../context/TenantContext';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { CLIENT_STATUS, getStatusInfo } from '../constants/clientStatus';
 
 export default function MonthlyAccountingPage() {
     const navigate = useNavigate();
+    const { activeCompanyId: companyId, currentTenant } = useTenant();
+    const welfareTrainingType = currentTenant?.company?.welfareTrainingType ?? 'both'; // 未設定の場合は後方互換でboth扱い
+    const hasWelfareTraining = welfareTrainingType !== 'none';
     const [clients, setClients] = useState([]);
     const [attendanceCounts, setAttendanceCounts] = useState({});
     const [loading, setLoading] = useState(true);
@@ -45,8 +49,10 @@ export default function MonthlyAccountingPage() {
                 const monthEnd = endOfMonth(new Date(selectedYear, selectedMonth - 1));
 
                 // 1. 対象月の全出席記録を取得（実績ベースで抽出するため）
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
                 const recordsQuery = query(
                     collection(db, 'attendanceRecords'),
+                    ...companyFilter,
                     where('date', '>=', Timestamp.fromDate(monthStart)),
                     where('date', '<=', Timestamp.fromDate(monthEnd))
                 );
@@ -72,7 +78,7 @@ export default function MonthlyAccountingPage() {
                 }
 
                 // 3. クライアント情報を取得（全件取得してからフィルタ）
-                const clientsQuery = query(collection(db, 'clients'));
+                const clientsQuery = query(collection(db, 'clients'), ...companyFilter);
                 const clientsSnap = await getDocs(clientsQuery);
 
                 const clientsData = [];
@@ -96,7 +102,7 @@ export default function MonthlyAccountingPage() {
             }
         };
         fetchData();
-    }, [selectedYear, selectedMonth]);
+    }, [selectedYear, selectedMonth, companyId]);
 
 
 
@@ -233,44 +239,74 @@ export default function MonthlyAccountingPage() {
                         </Box>
                     </Paper>
 
-                    {/* 厚生訓練費請求書カード */}
-                    <Paper
-                        elevation={4}
-                        sx={{
-                            flex: 1,
-                            p: 3,
-                            borderRadius: 3,
-                            background: 'linear-gradient(145deg, #5b21b6 0%, #7c3aed 100%)',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                            border: '1px solid rgba(139, 92, 246, 0.3)',
-                            '&:hover': {
-                                transform: 'translateY(-8px) scale(1.02)',
-                                boxShadow: '0 20px 40px rgba(139, 92, 246, 0.4)',
-                            },
-                        }}
-                        onClick={() => navigate(`/monthly/welfare-training`)}
-                    >
-                        <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="h1" sx={{ mb: 2 }}>💰</Typography>
-                            <Typography variant="h5" sx={{ color: 'white', fontWeight: 'bold', mb: 1 }}>
-                                厚生訓練費請求書
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                自治体別の請求書を作成
-                            </Typography>
-                            <Chip
-                                label="作成する →"
-                                size="small"
-                                sx={{
-                                    mt: 2,
-                                    bgcolor: 'rgba(255,255,255,0.2)',
-                                    color: 'white',
-                                    fontWeight: 'bold',
-                                }}
-                            />
-                        </Box>
-                    </Paper>
+                    {/* 厚生訓練費請求書カード（対象外の事業所には非表示） */}
+                    {hasWelfareTraining ? (
+                        <Paper
+                            elevation={4}
+                            sx={{
+                                flex: 1,
+                                p: 3,
+                                borderRadius: 3,
+                                background: 'linear-gradient(145deg, #5b21b6 0%, #7c3aed 100%)',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                border: '1px solid rgba(139, 92, 246, 0.3)',
+                                '&:hover': {
+                                    transform: 'translateY(-8px) scale(1.02)',
+                                    boxShadow: '0 20px 40px rgba(139, 92, 246, 0.4)',
+                                },
+                            }}
+                            onClick={() => navigate(`/monthly/welfare-training`)}
+                        >
+                            <Box sx={{ textAlign: 'center' }}>
+                                <Typography variant="h1" sx={{ mb: 2 }}>💰</Typography>
+                                <Typography variant="h5" sx={{ color: 'white', fontWeight: 'bold', mb: 1 }}>
+                                    {welfareTrainingType === 'transport_only' ? '交通費請求書' : '厚生訓練費請求書'}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                                    {welfareTrainingType === 'transport_only' ? '交通費のみ' : '訓練費・交通費の請求書を作成'}
+                                </Typography>
+                                <Chip
+                                    label="作成する →"
+                                    size="small"
+                                    sx={{
+                                        mt: 2,
+                                        bgcolor: 'rgba(255,255,255,0.2)',
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                    }}
+                                />
+                            </Box>
+                        </Paper>
+                    ) : (
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                flex: 1,
+                                p: 3,
+                                borderRadius: 3,
+                                background: 'rgba(30,41,59,0.4)',
+                                border: '1px dashed rgba(148,163,184,0.3)',
+                            }}
+                        >
+                            <Box sx={{ textAlign: 'center' }}>
+                                <Typography variant="h1" sx={{ mb: 2, opacity: 0.3 }}>💰</Typography>
+                                <Typography variant="h5" sx={{ color: 'text.disabled', fontWeight: 'bold', mb: 1 }}>
+                                    厚生訓練費請求書
+                                </Typography>
+                                <Typography variant="body2" color="text.disabled">
+                                    この事業所は対象外です
+                                </Typography>
+                                <Chip
+                                    label="管理画面で設定 →"
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => navigate('/admin/companies')}
+                                    sx={{ mt: 2, cursor: 'pointer' }}
+                                />
+                            </Box>
+                        </Paper>
+                    )}
                 </Stack>
 
                 {/* 出欠確認表セクション */}

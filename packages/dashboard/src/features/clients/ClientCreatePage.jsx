@@ -5,9 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { Paper, Typography, TextField, Button, Box, Grid } from '@mui/material';
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase/index.js";
+import { useAuth } from '../auth/context/AuthContext';
 
 function ClientCreatePage() {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -32,6 +34,8 @@ function ClientCreatePage() {
       // 保存するデータを作成
       const dataToSave = {
         ...formData,
+        companyId: currentUser?.companyId || null,
+        branchId: currentUser?.branchId || null,
         inquiryDate: serverTimestamp(), // 問い合わせ日
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

@@ -78,6 +78,7 @@ export default function ClientCheckoutPage() {
 
             // 1. dailyCheckins 更新
             await setDoc(doc(db, 'dailyCheckins', docId), {
+                companyId: client.companyId,
                 departureTime: now,
                 fatigue: form.fatigue,
                 // データ構造を統一
@@ -92,6 +93,7 @@ export default function ClientCheckoutPage() {
 
             // 2. attendanceRecords 更新（管理画面・印刷用）
             await setDoc(doc(db, 'attendanceRecords', docId), {
+                companyId: client.companyId,
                 status: 'present',
                 endTime: departureTime,
                 // 活動実績を上書き保存

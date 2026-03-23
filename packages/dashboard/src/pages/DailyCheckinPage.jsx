@@ -3,6 +3,7 @@ import { Box, Typography, Paper, List, ListItem, CircularProgress, Divider, Stac
 import { collection, query, where, getDocs, Timestamp, addDoc, serverTimestamp, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/index';
 import { useAuth } from "../features/auth/context/AuthContext";
+import { useTenant } from '../context/TenantContext';
 import { format } from 'date-fns';
 import HomeIcon from '@mui/icons-material/Home';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -12,6 +13,7 @@ import { CHARGE_FIELD_MAP } from '../constants/chargeFields';
 
 const DailyCheckinPage = () => {
   const { currentUser } = useAuth();
+  const { activeCompanyId: companyId } = useTenant();
   const [todaysPlans, setTodaysPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,9 +32,11 @@ const DailyCheckinPage = () => {
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
 
-      // 0. 支店設定を読み込み（TODO: 現在のユーザーの支店IDを使用）
-      // 仮で最初の支店設定を取得、後でuser.branchIdから取得するよう修正
-      const branchesSnapshot = await getDocs(collection(db, 'branches'));
+      // 0. 支店設定を読み込み（自社の支店のみ取得）
+      const companyBranchFilter = companyId ? [where('companyId', '==', companyId)] : [];
+      const branchesSnapshot = await getDocs(
+        companyBranchFilter.length ? query(collection(db, 'branches'), ...companyBranchFilter) : collection(db, 'branches')
+      );
       console.log('=== 支店設定デバッグ ===');
       console.log('支店数:', branchesSnapshot.size);
       if (!branchesSnapshot.empty) {
@@ -74,7 +78,8 @@ const DailyCheckinPage = () => {
 
 
       // 1. 今日の既存の出欠記録を取得
-      const recordsQuery = query(collection(db, 'attendanceRecords'), where('date', '>=', Timestamp.fromDate(todayStart)), where('date', '<=', Timestamp.fromDate(todayEnd)));
+      const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+      const recordsQuery = query(collection(db, 'attendanceRecords'), ...companyFilter, where('date', '>=', Timestamp.fromDate(todayStart)), where('date', '<=', Timestamp.fromDate(todayEnd)));
       const recordsSnapshot = await getDocs(recordsQuery);
       const existingRecords = new Map();
       const chargesMap = new Map();
@@ -97,12 +102,15 @@ const DailyCheckinPage = () => {
       // 2. 今日の既存の体調記録を取得（省略可能）
       setHealthData(new Map());
 
-      // 3. クライアントマスター情報を取得
-      const clientsSnapshot = await getDocs(collection(db, 'clients'));
+      // 3. クライアントマスター情報を取得（自社のみ）
+      const clientsQuery = companyFilter.length
+        ? query(collection(db, 'clients'), ...companyFilter)
+        : collection(db, 'clients');
+      const clientsSnapshot = await getDocs(clientsQuery);
       const clientMap = new Map(clientsSnapshot.docs.map(d => [d.id, { name: d.data().name, data: d.data() }]));
 
       // 4. 今日の利用計画を取得
-      const plansQuery = query(collection(db, 'attendancePlans'), where('plannedDates', 'array-contains', Timestamp.fromDate(todayStart)));
+      const plansQuery = query(collection(db, 'attendancePlans'), ...companyFilter, where('plannedDates', 'array-contains', Timestamp.fromDate(todayStart)));
       const plansSnapshot = await getDocs(plansQuery);
       const plannedClients = plansSnapshot.docs.map(doc => {
         const clientId = doc.data().clientId;
@@ -146,6 +154,8 @@ const DailyCheckinPage = () => {
         const docId = `${clientId}_${today}`;
         const newRecordData = {
           clientId: clientId,
+          companyId: currentUser.companyId || null,
+          branchId: currentUser.branchId || null,
           date: Timestamp.fromDate(new Date()),
           staffId: currentUser.uid,
           clientName: clientData.name,
@@ -339,47 +349,51 @@ const DailyCheckinPage = () => {
                   </Grid>
                 </Grid>
 
-                {/* 加算チップエリア - 常に表示、出席時のみ有効 */}
+                {/* 加算チップエリア - 常に表示、出席時のみ有効（8個ずつ折り返し） */}
                 {enabledCharges.length > 0 && (
-                  <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {enabledCharges.map(charge => {
-                      const isActive = serviceCharges.get(plan.clientId)?.[charge.key] || false;
-                      const isDisabled = status !== 'present';
-                      return (
-                        <Chip
-                          key={charge.key}
-                          label={charge.label}
-                          size="small"
-                          clickable={!isDisabled}
-                          disabled={isDisabled}
-                          onClick={() => !isDisabled && handleChargeToggle(plan.clientId, charge.key)}
-                          sx={{
-                            fontSize: '0.7rem',
-                            height: 24,
-                            bgcolor: isDisabled
-                              ? 'transparent'
-                              : (isActive ? `${charge.color}30` : 'transparent'),
-                            color: isDisabled
-                              ? '#4a556850'
-                              : (isActive ? charge.color : '#94a3b8'),
-                            border: '1px solid',
-                            borderColor: isDisabled
-                              ? '#4a556820'
-                              : (isActive ? `${charge.color}50` : '#4a556830'),
-                            opacity: isDisabled ? 0.5 : 1,
-                            cursor: isDisabled ? 'default' : 'pointer',
-                            '&:hover': {
-                              bgcolor: isDisabled
-                                ? 'transparent'
-                                : (isActive ? `${charge.color}40` : '#4a556820'),
-                            },
-                            '&.Mui-disabled': {
-                              opacity: 0.5,
-                            },
-                          }}
-                        />
-                      );
-                    })}
+                  <Box sx={{ mt: 1 }}>
+                    {Array.from({ length: Math.ceil(enabledCharges.length / 8) }, (_, rowIndex) => (
+                      <Box key={rowIndex} sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 0.5 }}>
+                        {enabledCharges.slice(rowIndex * 8, (rowIndex + 1) * 8).map(charge => {
+                          const isActive = serviceCharges.get(plan.clientId)?.[charge.key] || false;
+                          const isDisabled = status !== 'present';
+                          return (
+                            <Chip
+                              key={charge.key}
+                              label={charge.label}
+                              size="small"
+                              clickable={!isDisabled}
+                              disabled={isDisabled}
+                              onClick={() => !isDisabled && handleChargeToggle(plan.clientId, charge.key)}
+                              sx={{
+                                fontSize: '0.7rem',
+                                height: 24,
+                                bgcolor: isDisabled
+                                  ? 'transparent'
+                                  : (isActive ? `${charge.color}30` : 'transparent'),
+                                color: isDisabled
+                                  ? '#4a556850'
+                                  : (isActive ? charge.color : '#94a3b8'),
+                                border: '1px solid',
+                                borderColor: isDisabled
+                                  ? '#4a556820'
+                                  : (isActive ? `${charge.color}50` : '#4a556830'),
+                                opacity: isDisabled ? 0.5 : 1,
+                                cursor: isDisabled ? 'default' : 'pointer',
+                                '&:hover': {
+                                  bgcolor: isDisabled
+                                    ? 'transparent'
+                                    : (isActive ? `${charge.color}40` : '#4a556820'),
+                                },
+                                '&.Mui-disabled': {
+                                  opacity: 0.5,
+                                },
+                              }}
+                            />
+                          );
+                        })}
+                      </Box>
+                    ))}
                   </Box>
                 )}
               </ListItem>

@@ -18,6 +18,9 @@ export function TenantProvider({ children }) {
     const [selectedCompanyId, setSelectedCompanyId] = useState(null);
     const [selectedBranchId, setSelectedBranchId] = useState(null);
 
+    // エミュレーターモード（プラットフォームオーナーが特定企業として操作する）
+    const [emulatingCompanyId, setEmulatingCompanyId] = useState(null);
+
     // 利用可能な企業・支店リスト
     const [companies, setCompanies] = useState([]);
     const [branches, setBranches] = useState([]);
@@ -115,6 +118,18 @@ export function TenantProvider({ children }) {
         }
     }, [branches]);
 
+    // エミュレーターモード開始（プラットフォームオーナーが特定企業として操作）
+    const enterEmulatorMode = useCallback((companyId) => {
+        if (isPlatform) {
+            setEmulatingCompanyId(companyId);
+        }
+    }, [isPlatform]);
+
+    // エミュレーターモード終了
+    const exitEmulatorMode = useCallback(() => {
+        setEmulatingCompanyId(null);
+    }, []);
+
     // 現在選択中のテナント情報
     const currentTenant = useMemo(() => ({
         companyId: selectedCompanyId,
@@ -122,6 +137,17 @@ export function TenantProvider({ children }) {
         company: companies.find(c => c.id === selectedCompanyId) || null,
         branch: branches.find(b => b.id === selectedBranchId) || null,
     }), [selectedCompanyId, selectedBranchId, companies, branches]);
+
+    // エミュレーター中の企業情報
+    const emulatingCompany = useMemo(() => (
+        emulatingCompanyId ? (companies.find(c => c.id === emulatingCompanyId) || null) : null
+    ), [emulatingCompanyId, companies]);
+
+    // 実際にデータ取得に使うcompanyId
+    // - エミュレート中: 対象企業のID
+    // - 一般ユーザー: 自分の企業ID
+    // - プラットフォームオーナー（非エミュレート）: null → フィルタなし（全データ見える）
+    const activeCompanyId = emulatingCompanyId || (isPlatform ? null : profile?.companyId) || null;
 
     // 企業・支店の切り替えが可能かどうか
     const canSwitchCompany = isPlatform || (isExternal && (profile?.assignedCompanies?.length || 0) > 1);
@@ -132,6 +158,16 @@ export function TenantProvider({ children }) {
         currentTenant,
         companyId: selectedCompanyId,
         branchId: selectedBranchId,
+
+        // データ取得に使う実効companyId（全ページこれを使う）
+        activeCompanyId,
+
+        // エミュレーターモード
+        isEmulating: !!emulatingCompanyId,
+        emulatingCompanyId,
+        emulatingCompany,
+        enterEmulatorMode,
+        exitEmulatorMode,
 
         // 利用可能なリスト
         companies,

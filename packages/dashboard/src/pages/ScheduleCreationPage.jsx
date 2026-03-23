@@ -23,8 +23,9 @@ import HomeIcon from '@mui/icons-material/Home';
 import BusinessIcon from '@mui/icons-material/Business';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PendingIcon from '@mui/icons-material/Pending';
-import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, Timestamp, or } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { format, startOfMonth, startOfWeek, addMonths, subMonths, isSameMonth, isToday, isSameDay } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import { getUpcomingHolidays, isHoliday } from '../utils/japaneseHolidays';
@@ -41,6 +42,7 @@ const generateCalendarDays = (monthDate) => {
 };
 
 export default function ScheduleCreationPage() {
+    const { companyId, isPlatform, loading: userLoading } = useCurrentUser();
     const [clients, setClients] = useState([]);
     const [clientPlans, setClientPlans] = useState({}); // clientId -> 予定日数
     const [selectedClient, setSelectedClient] = useState(null);
@@ -53,14 +55,15 @@ export default function ScheduleCreationPage() {
 
     // 利用者一覧を取得
     useEffect(() => {
+        if (userLoading) return;
+        if (!isPlatform && !companyId) return;
         const fetchClients = async () => {
             try {
+                const companyFilter = !isPlatform ? [where('companyId', '==', companyId)] : [];
                 const q = query(
                     collection(db, 'clients'),
-                    or(
-                        where('status', '==', 'active_onsite'),
-                        where('status', '==', 'active_remote')
-                    )
+                    ...companyFilter,
+                    where('status', 'in', ['active_onsite', 'active_remote'])
                 );
                 const snapshot = await getDocs(q);
                 const clientList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -73,7 +76,7 @@ export default function ScheduleCreationPage() {
             }
         };
         fetchClients();
-    }, []);
+    }, [isPlatform, companyId, userLoading]);
 
     // 全員の今月の予定日数を取得（1クエリで全員分）
     useEffect(() => {
@@ -83,8 +86,10 @@ export default function ScheduleCreationPage() {
 
             try {
                 // 1回のクエリで全員の予定を取得
+                const companyFilter = !isPlatform ? [where('companyId', '==', companyId)] : [];
                 const q = query(
                     collection(db, 'attendancePlans'),
+                    ...companyFilter,
                     where('year', '==', year),
                     where('month', '==', month)
                 );
@@ -159,6 +164,7 @@ export default function ScheduleCreationPage() {
 
             const planData = {
                 clientId: selectedClient.id,
+                companyId: selectedClient.companyId || companyId,
                 year,
                 month,
                 plannedDates: newDates.map(d => Timestamp.fromDate(d)),

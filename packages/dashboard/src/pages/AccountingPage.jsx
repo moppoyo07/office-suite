@@ -12,27 +12,9 @@ import {
     Description, Send, Print
 } from '@mui/icons-material';
 
-// --- モックデータ初期値 ---
-const INITIAL_PAYMENTS = [
-    { id: 'p1', date: '2026-02-15', payer: 'ナカク フクシカ', amount: 30040 },
-    { id: 'p2', date: '2026-02-20', payer: 'ミヨシシ ヤクショ', amount: 48500 },
-    { id: 'p3', date: '2026-02-25', payer: 'ヒガシク ヤクショ', amount: 12000 },
-    { id: 'p4', date: '2026-02-26', payer: 'ミナミク フクシカ', amount: 15000 },
-    { id: 'p5', date: '2026-02-27', payer: 'ニシク フクシカ', amount: 22000 },
-];
-
-const INITIAL_CLAIMS = [
-    { id: 'c1', month: '2026-01', municipality: '広島市中区', client: '川崎 かずみ', type: 'fees', amount: 3150 },
-    { id: 'c2', month: '2026-01', municipality: '広島市中区', client: '川崎 かずみ', type: 'transport', amount: 2400 },
-    { id: 'c3', month: '2026-01', municipality: '広島市中区', client: '田村 翔', type: 'fees', amount: 3150 },
-    { id: 'c4', month: '2026-01', municipality: '広島市中区', client: '田村 翔', type: 'transport', amount: 2400 },
-    { id: 'c5', month: '2026-01', municipality: '広島市中区', client: '山田 花子', type: 'fees', amount: 3150 },
-    { id: 'c6', month: '2026-01', municipality: '広島市中区', client: '山田 花子', type: 'transport', amount: 15790 },
-
-    { id: 'c10', month: '2025-10', municipality: '三次市', client: '佐藤 次郎', type: 'fees+trans', amount: 16000 },
-    { id: 'c11', month: '2025-11', municipality: '三次市', client: '佐藤 次郎', type: 'fees+trans', amount: 16500 },
-    { id: 'c12', month: '2025-12', municipality: '三次市', client: '佐藤 次郎', type: 'fees+trans', amount: 16000 },
-];
+// --- データ（未実装：今後Firestore連携予定） ---
+const INITIAL_PAYMENTS = [];
+const INITIAL_CLAIMS = [];
 
 export default function AccountingPage() {
     const [tabValue, setTabValue] = useState(0);

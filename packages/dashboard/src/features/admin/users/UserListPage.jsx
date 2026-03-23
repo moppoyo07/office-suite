@@ -35,7 +35,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import BusinessIcon from '@mui/icons-material/Business';
 import StoreIcon from '@mui/icons-material/Store';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../../../firebase/index';
 import { ROLE_METADATA } from '../../../constants/roles';
 import { useCurrentUser } from '../../../hooks/useCurrentUser';
@@ -50,7 +50,7 @@ export default function UserListPage() {
     const [companies, setCompanies] = useState([]);
     const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { isPlatform } = useCurrentUser();
+    const { isPlatform, companyId, loading: userLoading } = useCurrentUser();
 
     // フィルタ状態
     const [searchQuery, setSearchQuery] = useState('');
@@ -60,15 +60,25 @@ export default function UserListPage() {
 
     // データ取得
     useEffect(() => {
+        // ユーザー情報のロードが終わるまで待つ
+        if (userLoading) return;
+        if (!isPlatform && !companyId) {
+            console.warn('companyIdが取得できませんでした');
+            setLoading(false);
+            return;
+        }
+
         const fetchData = async () => {
             try {
                 // ユーザー、企業、支店を並列取得
-                // orderBy('createdAt')を使うとcreatedAtがないドキュメントが除外されるため、
-                // 全件取得してからメモリ内でソートする
+                // プラットフォーム管理者は全件、その他は自社のみ
+                const companyFilter = !isPlatform ? [where('companyId', '==', companyId)] : [];
                 const [usersSnap, companiesSnap, branchesSnap] = await Promise.all([
-                    getDocs(collection(db, 'users')),
-                    getDocs(collection(db, 'companies')),
-                    getDocs(collection(db, 'branches')),
+                    getDocs(query(collection(db, 'users'), ...companyFilter)),
+                    isPlatform
+                        ? getDocs(collection(db, 'companies'))
+                        : (companyId ? getDoc(doc(db, 'companies', companyId)).then(d => ({ docs: d.exists() ? [d] : [] })) : Promise.resolve({ docs: [] })),
+                    getDocs(query(collection(db, 'branches'), ...companyFilter)),
                 ]);
 
                 const fetchedUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -90,7 +100,7 @@ export default function UserListPage() {
             }
         };
         fetchData();
-    }, []);
+    }, [isPlatform, companyId, userLoading]);
 
     // 企業名・支店名のルックアップ
     const companyMap = useMemo(() => {

@@ -21,6 +21,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase/index.js";
 import { useCurrentUser } from "../../hooks/useCurrentUser.js";
 import { ROLES, ROLE_METADATA, isPlatformRole, isManagerRole } from "../../constants/roles.js";
+import { useTenant } from "../../context/TenantContext.jsx";
 
 const drawerWidth = 240;
 
@@ -43,6 +44,7 @@ const UserInfoPanel = ({ role, profile }) => {
 function Layout() {
   const { logout, currentUser } = useAuth();
   const { role, profile } = useCurrentUser();
+  const { isEmulating, emulatingCompany, exitEmulatorMode } = useTenant();
   const [branchServices, setBranchServices] = useState([]);
   const [loadingBranch, setLoadingBranch] = useState(false);
 
@@ -236,6 +238,28 @@ function Layout() {
       {/* Main Content */}
       <Box component="main" sx={{ flexGrow: 1, height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#0f172a' }}>
         <Toolbar sx={{ minHeight: '48px !important' }} />
+
+        {/* エミュレーターバナー */}
+        {isEmulating && (
+          <Box sx={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            px: 2, py: 0.5,
+            bgcolor: 'rgba(139, 92, 246, 0.15)',
+            borderBottom: '1px solid rgba(139, 92, 246, 0.4)',
+          }}>
+            <Typography variant="caption" sx={{ color: '#a78bfa', fontWeight: 'bold', letterSpacing: '0.05em' }}>
+              🔍 {emulatingCompany?.name || '企業'} として表示中
+            </Typography>
+            <Button
+              size="small"
+              onClick={exitEmulatorMode}
+              sx={{ color: '#a78bfa', fontSize: '0.7rem', py: 0, minWidth: 'auto', '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.2)' } }}
+            >
+              ← 戻る
+            </Button>
+          </Box>
+        )}
+
         <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
           <Outlet />
         </Box>

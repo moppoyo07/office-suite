@@ -16,12 +16,12 @@ import {
 import BusinessIcon from '@mui/icons-material/Business';
 import StoreIcon from '@mui/icons-material/Store';
 import PeopleIcon from '@mui/icons-material/People';
-import { collection, getCountFromServer /* query, where */ } from 'firebase/firestore';
+import { collection, getCountFromServer, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/index';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 export default function AdminDashboard() {
-    const { isPlatform, role } = useCurrentUser();
+    const { isPlatform, companyId, loading: userLoading } = useCurrentUser();
     const [stats, setStats] = useState({
         companies: null,
         branches: null,
@@ -30,12 +30,15 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (userLoading) return;
+
         const fetchStats = async () => {
             try {
+                const companyFilter = !isPlatform && companyId ? [where('companyId', '==', companyId)] : [];
                 const [companiesSnap, branchesSnap, usersSnap] = await Promise.all([
-                    getCountFromServer(collection(db, 'companies')),
-                    getCountFromServer(collection(db, 'branches')),
-                    getCountFromServer(collection(db, 'users')),
+                    isPlatform ? getCountFromServer(collection(db, 'companies')) : Promise.resolve({ data: () => ({ count: 1 }) }),
+                    getCountFromServer(query(collection(db, 'branches'), ...companyFilter)),
+                    getCountFromServer(query(collection(db, 'users'), ...companyFilter)),
                 ]);
 
                 setStats({
@@ -51,7 +54,7 @@ export default function AdminDashboard() {
         };
 
         fetchStats();
-    }, []);
+    }, [isPlatform, companyId, userLoading]);
 
     const cards = [
         {

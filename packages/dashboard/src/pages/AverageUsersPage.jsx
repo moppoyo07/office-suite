@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { collection, query, where, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from '../features/auth/context/AuthContext';
 import SaveIcon from '@mui/icons-material/Save';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -32,6 +33,9 @@ const generateFiscalYears = () => {
 };
 
 export default function AverageUsersPage() {
+    const { currentUser } = useAuth();
+    const companyId = currentUser?.companyId || null;
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -57,8 +61,10 @@ export default function AverageUsersPage() {
             setError(null);
             try {
                 // 保存済みの月別サマリーを取得
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
                 const summaryQuery = query(
                     collection(db, 'monthlyAttendanceSummary'),
+                    ...companyFilter,
                     where('fiscalYear', '==', fiscalYear)
                 );
                 const summarySnap = await getDocs(summaryQuery);
@@ -84,7 +90,8 @@ export default function AverageUsersPage() {
                 setMonthlyData(data);
 
                 // 利用者一覧を取得
-                const clientsSnap = await getDocs(collection(db, 'clients'));
+                const clientFilter = companyId ? [where('companyId', '==', companyId)] : [];
+                const clientsSnap = await getDocs(clientFilter.length ? query(collection(db, 'clients'), ...clientFilter) : collection(db, 'clients'));
                 const clientList = clientsSnap.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
@@ -98,7 +105,7 @@ export default function AverageUsersPage() {
             }
         };
         fetchData();
-    }, [fiscalYear]);
+    }, [fiscalYear, companyId]);
 
     // 自動集計（attendanceRecordsから取得）
     const handleAutoCalculate = async (month) => {
@@ -108,8 +115,10 @@ export default function AverageUsersPage() {
             const startDate = new Date(year, month - 1, 1);
             const endDate = new Date(year, month, 0, 23, 59, 59);
 
+            const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
             const recordsQuery = query(
                 collection(db, 'attendanceRecords'),
+                ...companyFilter,
                 where('date', '>=', Timestamp.fromDate(startDate)),
                 where('date', '<=', Timestamp.fromDate(endDate)),
                 where('status', '==', 'present')
@@ -173,10 +182,11 @@ export default function AverageUsersPage() {
                 const data = monthlyData[month];
                 if (data.attendance === '' && data.days === '') continue; // 空データはスキップ
 
-                const docId = `${fiscalYear}_${month}`;
+                const docId = companyId ? `${companyId}_${fiscalYear}_${month}` : `${fiscalYear}_${month}`;
                 await setDoc(doc(db, 'monthlyAttendanceSummary', docId), {
                     fiscalYear,
                     month,
+                    companyId: companyId || null,
                     totalAttendance: parseInt(data.attendance) || 0,
                     operatingDays: parseInt(data.days) || 0,
                     source: data.source || 'manual',

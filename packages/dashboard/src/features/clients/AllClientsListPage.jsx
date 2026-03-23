@@ -10,6 +10,7 @@ import { Search, People, PersonOff } from '@mui/icons-material';
 import { collection, getDocs, query, where, or } from 'firebase/firestore';
 import { db } from '../../firebase/index';
 import { useNavigate } from 'react-router-dom';
+import { useTenant } from '../../context/TenantContext';
 import { format } from 'date-fns';
 import { CLIENT_STATUS, STATUS_CONFIG } from '../../constants/clientStatus';
 
@@ -54,12 +55,14 @@ export const AllClientsListPage = () => {
   const [loading, setLoading] = useState(true);
   const [statusCounts, setStatusCounts] = useState({});
   const navigate = useNavigate();
+  const { activeCompanyId: companyId } = useTenant();
+  const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
 
   // ステータス別件数を取得（軽量）
   useEffect(() => {
     const fetchStatusCounts = async () => {
       try {
-        const q = query(collection(db, 'clients'));
+        const q = query(collection(db, 'clients'), ...companyFilter);
         const snapshot = await getDocs(q);
         const counts = {};
         let activeCount = 0;
@@ -87,41 +90,18 @@ export const AllClientsListPage = () => {
       try {
         let q;
         if (filterStatus === 'active') {
-          // 利用中のみ
-          q = query(
-            collection(db, 'clients'),
-            or(
-              where('status', '==', CLIENT_STATUS.ACTIVE_ONSITE),
-              where('status', '==', CLIENT_STATUS.ACTIVE_REMOTE)
-            )
-          );
+          q = query(collection(db, 'clients'), ...companyFilter, where('status', 'in', [CLIENT_STATUS.ACTIVE_ONSITE, CLIENT_STATUS.ACTIVE_REMOTE]));
         } else if (filterStatus === 'all') {
-          // 全件
-          q = query(collection(db, 'clients'));
+          q = query(collection(db, 'clients'), ...companyFilter);
         } else if (filterStatus === 'lost_active') {
-          // 利用中退所（施設内・施設外の両方）
-          q = query(
-            collection(db, 'clients'),
-            where('status', '==', CLIENT_STATUS.CLOSED),
-            where('lostAtPhase', 'in', [CLIENT_STATUS.ACTIVE_ONSITE, CLIENT_STATUS.ACTIVE_REMOTE])
-          );
+          q = query(collection(db, 'clients'), ...companyFilter, where('status', '==', CLIENT_STATUS.CLOSED), where('lostAtPhase', 'in', [CLIENT_STATUS.ACTIVE_ONSITE, CLIENT_STATUS.ACTIVE_REMOTE]));
         } else if (filterStatus.startsWith('lost_')) {
-          // ロスト（その他の特定フェーズ）
           const targetPhase = filterStatus.replace('lost_', '');
-          q = query(
-            collection(db, 'clients'),
-            where('status', '==', CLIENT_STATUS.CLOSED),
-            where('lostAtPhase', '==', targetPhase)
-          );
+          q = query(collection(db, 'clients'), ...companyFilter, where('status', '==', CLIENT_STATUS.CLOSED), where('lostAtPhase', '==', targetPhase));
         } else if (filterStatus === CLIENT_STATUS.FOLLOW_UP || filterStatus === 'follow_up') {
-          // 定着支援中（follow-up-m1〜m6）
-          q = query(
-            collection(db, 'clients'),
-            where('status', 'in', ['follow-up-m1', 'follow-up-m2', 'follow-up-m3', 'follow-up-m4', 'follow-up-m5', 'follow-up-m6'])
-          );
+          q = query(collection(db, 'clients'), ...companyFilter, where('status', 'in', ['follow-up-m1', 'follow-up-m2', 'follow-up-m3', 'follow-up-m4', 'follow-up-m5', 'follow-up-m6']));
         } else {
-          // 特定ステータス
-          q = query(collection(db, 'clients'), where('status', '==', filterStatus));
+          q = query(collection(db, 'clients'), ...companyFilter, where('status', '==', filterStatus));
         }
 
         const snapshot = await getDocs(q);
@@ -140,7 +120,7 @@ export const AllClientsListPage = () => {
       }
     };
     fetchClients();
-  }, [filterStatus]);
+  }, [filterStatus, companyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 検索フィルタ（ローカル）
   const filteredClients = useMemo(() => {

@@ -21,8 +21,9 @@ import { useTheme } from '@mui/material/styles';
 
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { useAuth } from '../features/auth/context/AuthContext.jsx';
+import { useTenant } from '../context/TenantContext';
 import { ROLES } from '../constants/roles';
-import { collection, collectionGroup, query, where, getCountFromServer, getDocs, orderBy, Timestamp, getDoc, or } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, getDocs, orderBy, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // 活動種別の翻訳マップ
@@ -34,6 +35,7 @@ const activityTypeMap = {
 const SupportWorkPage = () => {
   const theme = useTheme();
   const { currentUser } = useAuth();
+  const { activeCompanyId: companyId } = useTenant();
   const isHotdog = currentUser?.role === ROLES.HELPER;
   const { stats, loading: statsLoading } = useDashboardStats();
 
@@ -80,13 +82,15 @@ const SupportWorkPage = () => {
     const fetchActivityCount = async () => {
       try {
         const { start, end } = getTargetPeriod();
+        const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
         const q = query(
           collectionGroup(db, 'activity_logs'),
+          ...companyFilter,
           where('createdAt', '>=', Timestamp.fromDate(start)),
           where('createdAt', '<=', Timestamp.fromDate(end))
         );
-        const snapshot = await getCountFromServer(q);
-        setActivityCount(snapshot.data().count);
+        const snapshot = await getDocs(q);
+        setActivityCount(snapshot.size);
       } catch (error) {
         if (error.message.includes('index')) setIndexError(true);
       } finally {
@@ -105,12 +109,11 @@ const SupportWorkPage = () => {
         const month = now.getMonth() + 1;
 
         // アクティブな利用者を取得
+        const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
         const clientsQuery = query(
           collection(db, 'clients'),
-          or(
-            where('status', '==', 'active_onsite'),
-            where('status', '==', 'active_remote')
-          )
+          ...companyFilter,
+          where('status', 'in', ['active_onsite', 'active_remote'])
         );
         const clientsSnap = await getDocs(clientsQuery);
         const totalClients = clientsSnap.docs.length;
@@ -118,6 +121,7 @@ const SupportWorkPage = () => {
         // 今月の予定がある利用者を取得
         const plansQuery = query(
           collection(db, 'attendancePlans'),
+          ...companyFilter,
           where('year', '==', year),
           where('month', '==', month)
         );
@@ -151,8 +155,10 @@ const SupportWorkPage = () => {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
+        const companyFilter2 = companyId ? [where('companyId', '==', companyId)] : [];
         const recordsQuery = query(
           collection(db, 'attendanceRecords'),
+          ...companyFilter2,
           where('date', '>=', Timestamp.fromDate(startOfMonth)),
           where('date', '<=', Timestamp.fromDate(endOfMonth))
         );
@@ -180,8 +186,10 @@ const SupportWorkPage = () => {
         const todayStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
         // 今日の予定を取得
+        const todayCompanyFilter = companyId ? [where('companyId', '==', companyId)] : [];
         const plansQuery = query(
           collection(db, 'attendancePlans'),
+          ...todayCompanyFilter,
           where('year', '==', year),
           where('month', '==', month)
         );
@@ -204,6 +212,7 @@ const SupportWorkPage = () => {
         const todayEnd = new Date(year, month - 1, day, 23, 59, 59);
         const recordsQuery = query(
           collection(db, 'attendanceRecords'),
+          ...todayCompanyFilter,
           where('date', '>=', Timestamp.fromDate(todayStart)),
           where('date', '<=', Timestamp.fromDate(todayEnd))
         );
@@ -227,8 +236,10 @@ const SupportWorkPage = () => {
     setLoadingLogs(true);
     try {
       const { start, end } = getTargetPeriod();
+      const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
       const q = query(
         collectionGroup(db, 'activity_logs'),
+        ...companyFilter,
         where('createdAt', '>=', Timestamp.fromDate(start)),
         where('createdAt', '<=', Timestamp.fromDate(end)),
         orderBy('createdAt', 'desc')
@@ -262,8 +273,10 @@ const SupportWorkPage = () => {
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
 
+        const reflCountFilter = companyId ? [where('companyId', '==', companyId)] : [];
         const q = query(
           collection(db, 'attendanceRecords'),
+          ...reflCountFilter,
           where('date', '>=', Timestamp.fromDate(todayStart)),
           where('date', '<=', Timestamp.fromDate(todayEnd))
         );
@@ -294,8 +307,10 @@ const SupportWorkPage = () => {
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
 
+      const reflFilter = companyId ? [where('companyId', '==', companyId)] : [];
       const q = query(
         collection(db, 'attendanceRecords'),
+        ...reflFilter,
         where('date', '>=', Timestamp.fromDate(todayStart)),
         where('date', '<=', Timestamp.fromDate(todayEnd)),
         orderBy('date', 'desc')

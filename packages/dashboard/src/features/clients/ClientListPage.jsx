@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Typography, Button, Paper, Box, Divider, CircularProgress } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
-import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, query, where } from "firebase/firestore";
 import { db, auth } from "@/firebase/index.js";
+import { useTenant } from '../../context/TenantContext';
 
 // コンポーネントのインポート
 import ClientCard from './ClientCard.jsx';
@@ -18,6 +19,8 @@ const columns = [
 ];
 
 function ClientListPage() {
+  const { activeCompanyId: companyId } = useTenant();
+
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
@@ -26,11 +29,13 @@ function ClientListPage() {
 
   const fetchClients = useCallback(async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "clients"));
+      const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+      const q = query(collection(db, "clients"), ...companyFilter);
+      const querySnapshot = await getDocs(q);
       setClients(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) { console.error("利用者データの取得に失敗しました:", error); }
     finally { setLoading(false); }
-  }, []);
+  }, [companyId]);
 
   const handleUpdateStatus = useCallback(async (clientId, currentStatus, direction) => {
     const col = columns.find(c => c.id === currentStatus);

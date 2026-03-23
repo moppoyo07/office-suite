@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { collection, query, where, getDocs, Timestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from '../features/auth/context/AuthContext';
 import SaveIcon from '@mui/icons-material/Save';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -32,6 +33,8 @@ const generateFiscalYears = () => {
 };
 
 export default function AverageUsersSheetPage() {
+    const { currentUser } = useAuth();
+    const companyId = currentUser?.companyId || null;
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -57,15 +60,16 @@ export default function AverageUsersSheetPage() {
             setError(null);
             try {
                 // 利用者一覧取得（ステータスに関わらず全員取得）
-                const clientsSnap = await getDocs(collection(db, 'clients'));
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+                const clientsSnap = await getDocs(companyFilter.length ? query(collection(db, 'clients'), ...companyFilter) : collection(db, 'clients'));
                 const clientList = clientsSnap.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
-                    // フィルタなし：就職者もロストも含める（過去に利用実績があれば表示）
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
                 setClients(clientList);
 
-                // 保存されたデータを取得
-                const sheetDocRef = doc(db, 'averageUsersSheets', String(fiscalYear));
+                // 保存されたデータを取得（companyId付きdocId）
+                const sheetDocId = companyId ? `${companyId}_${fiscalYear}` : String(fiscalYear);
+                const sheetDocRef = doc(db, 'averageUsersSheets', sheetDocId);
                 const sheetSnap = await getDoc(sheetDocRef);
 
                 if (sheetSnap.exists()) {
@@ -84,7 +88,7 @@ export default function AverageUsersSheetPage() {
             }
         };
         fetchData();
-    }, [fiscalYear]);
+    }, [fiscalYear, companyId]);
 
     // 出席記録から自動計算
     const autoCalculateFromRecords = useCallback(async () => {
@@ -97,9 +101,11 @@ export default function AverageUsersSheetPage() {
 
             console.log('自動計算開始:', fiscalYear, '年度', startDate, '〜', endDate);
 
-            // 出席記録取得（日付範囲のみでクエリ、statusはクライアント側でフィルタ）
+            // 出席記録取得
+            const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
             const recordsQuery = query(
                 collection(db, 'attendanceRecords'),
+                ...companyFilter,
                 where('date', '>=', Timestamp.fromDate(startDate)),
                 where('date', '<=', Timestamp.fromDate(endDate))
             );
@@ -174,9 +180,11 @@ export default function AverageUsersSheetPage() {
         setSaving(true);
         setError(null);
         try {
-            const sheetDocRef = doc(db, 'averageUsersSheets', String(fiscalYear));
+            const sheetDocId = companyId ? `${companyId}_${fiscalYear}` : String(fiscalYear);
+            const sheetDocRef = doc(db, 'averageUsersSheets', sheetDocId);
             await setDoc(sheetDocRef, {
                 fiscalYear,
+                companyId: companyId || null,
                 attendanceData,
                 operatingDays,
                 updatedAt: Timestamp.now(),

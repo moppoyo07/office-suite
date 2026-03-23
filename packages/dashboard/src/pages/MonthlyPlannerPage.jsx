@@ -29,6 +29,7 @@ import { db } from '../firebase';
 import { format, getDaysInMonth, addMonths, subMonths, getDay } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import { isHoliday } from '../utils/japaneseHolidays';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 // 施設定員（仮）
 const FACILITY_CAPACITY = 20;
@@ -41,6 +42,7 @@ const DEFAULT_ACTIVITY_OPTIONS = [
 ];
 
 export default function MonthlyPlannerPage() {
+  const { companyId, isPlatform, loading: userLoading } = useCurrentUser();
   const [clients, setClients] = useState([]);
   const [plans, setPlans] = useState({}); // clientId -> Set of date strings (yyyy-MM-dd)
   const [records, setRecords] = useState({}); // clientId -> { dateStr: { status, recordId } }
@@ -97,14 +99,15 @@ export default function MonthlyPlannerPage() {
 
   // 利用者を取得
   useEffect(() => {
+    if (userLoading) return;
+    if (!isPlatform && !companyId) return;
     const fetchClients = async () => {
       try {
+        const companyFilter = !isPlatform ? [where('companyId', '==', companyId)] : [];
         const q = query(
           collection(db, 'clients'),
-          or(
-            where('status', '==', 'active_onsite'),
-            where('status', '==', 'active_remote')
-          )
+          ...companyFilter,
+          where('status', 'in', ['active_onsite', 'active_remote'])
         );
         const snapshot = await getDocs(q);
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -115,16 +118,20 @@ export default function MonthlyPlannerPage() {
       }
     };
     fetchClients();
-  }, []);
+  }, [isPlatform, companyId, userLoading]);
 
   // 予定と実績を取得
   useEffect(() => {
+    if (userLoading) return;
+    if (!isPlatform && !companyId) return;
     const fetchData = async () => {
       setLoading(true);
+      const companyFilter = !isPlatform ? [where('companyId', '==', companyId)] : [];
       try {
         // 予定を取得
         const plansQuery = query(
           collection(db, 'attendancePlans'),
+          ...companyFilter,
           where('year', '==', year),
           where('month', '==', month)
         );
@@ -148,6 +155,7 @@ export default function MonthlyPlannerPage() {
         const endDate = new Date(year, month, 0, 23, 59, 59);
         const recordsQuery = query(
           collection(db, 'attendanceRecords'),
+          ...companyFilter,
           where('date', '>=', Timestamp.fromDate(startDate)),
           where('date', '<=', Timestamp.fromDate(endDate))
         );
@@ -180,7 +188,7 @@ export default function MonthlyPlannerPage() {
       }
     };
     fetchData();
-  }, [year, month]);
+  }, [year, month, isPlatform, companyId, userLoading]);
 
   // 日別の出席者数を計算
   const dailyTotals = useMemo(() => {
@@ -313,6 +321,7 @@ export default function MonthlyPlannerPage() {
       const newRecord = {
         clientId: modalClient.id,
         clientName: modalClient.name || '',
+        companyId: modalClient.companyId || companyId,
         date: Timestamp.fromDate(modalDayInfo.date),
         status: 'present',
         workType: modalForm.attendanceType,

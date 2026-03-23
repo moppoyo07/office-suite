@@ -30,13 +30,17 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PersonIcon from '@mui/icons-material/Person';
 import WarningIcon from '@mui/icons-material/Warning';
 import { Link as RouterLink } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/index';
+import { useAuth } from '../features/auth/context/AuthContext';
 import { CLIENT_STATUS, STATUS_CONFIG, CLOSED_REASONS } from '../constants/clientStatus';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 export default function CVAnalysisPage() {
+    const { currentUser } = useAuth();
+    const companyId = currentUser?.companyId || null;
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [clients, setClients] = useState([]);
@@ -62,7 +66,8 @@ export default function CVAnalysisPage() {
             setLoading(true);
             setError(null);
             try {
-                const snapshot = await getDocs(collection(db, 'clients'));
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+                const snapshot = await getDocs(companyFilter.length ? query(collection(db, 'clients'), ...companyFilter) : collection(db, 'clients'));
                 const data = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data(),
@@ -76,7 +81,7 @@ export default function CVAnalysisPage() {
             }
         };
         fetchClients();
-    }, []);
+    }, [companyId]);
 
     // 選択月のデータをフィルタリング
     const { monthlyStats, lostClients } = useMemo(() => {

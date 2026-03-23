@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase/index.js";
 import { useActivityLog } from '../../hooks/useActivityLog';
+import { useTenant } from '../../context/TenantContext';
 import { CLIENT_STATUS } from '../../constants/clientStatus';
 
 export const followUpKanbanColumns = [
@@ -17,6 +18,7 @@ export const followUpKanbanColumns = [
 export const useFollowUpClients = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { activeCompanyId: companyId } = useTenant();
 
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
   const [completionTargetId, setCompletionTargetId] = useState(null);
@@ -31,7 +33,8 @@ export const useFollowUpClients = () => {
   useEffect(() => {
     setLoading(true);
     const followUpStatuses = followUpKanbanColumns.map(col => col.status);
-    const q = query(collection(db, "clients"), where("status", "in", followUpStatuses));
+    const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+    const q = query(collection(db, "clients"), ...companyFilter, where("status", "in", followUpStatuses));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -43,7 +46,7 @@ export const useFollowUpClients = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [companyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const categorizedClients = useMemo(() => {
     return followUpKanbanColumns.reduce((acc, column) => {

@@ -44,10 +44,13 @@ import ServiceRecordEditModal from '../features/service-records/ServiceRecordEdi
 import ServiceRecordPrintView from '../features/service-records/ServiceRecordPrintView';
 import EditableServiceTable from '../features/service-records/EditableServiceTable';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useTenant } from '../context/TenantContext';
 
 export default function ServiceRecordListPage() {
     const { profile } = useCurrentUser();
     const isServiceManager = profile?.isServiceManager === true;
+    const { activeCompanyId: companyId } = useTenant();
+    const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [attendanceRecords, setAttendanceRecords] = useState([]);
     const [serviceRecords, setServiceRecords] = useState({});
@@ -77,6 +80,7 @@ export default function ServiceRecordListPage() {
             // 1. 出席記録を取得（日付範囲のみでクエリ、statusはJSでフィルタ）
             const attendanceQuery = query(
                 collection(db, 'attendanceRecords'),
+                ...companyFilter,
                 where('date', '>=', Timestamp.fromDate(monthStart)),
                 where('date', '<=', Timestamp.fromDate(monthEnd))
             );
@@ -97,6 +101,7 @@ export default function ServiceRecordListPage() {
             // 2. サービス記録を取得
             const serviceQuery = query(
                 collection(db, 'serviceRecords'),
+                ...companyFilter,
                 where('date', '>=', Timestamp.fromDate(monthStart)),
                 where('date', '<=', Timestamp.fromDate(monthEnd))
             );
@@ -116,7 +121,7 @@ export default function ServiceRecordListPage() {
         } finally {
             setLoading(false);
         }
-    }, [currentMonth]);
+    }, [currentMonth, companyId]);
 
 
     useEffect(() => {
@@ -388,11 +393,8 @@ export default function ServiceRecordListPage() {
                         </Typography>
                         <Box sx={{
                             display: 'flex',
+                            flexWrap: 'wrap',
                             gap: 1.5,
-                            overflowX: 'auto',
-                            pb: 1,
-                            '&::-webkit-scrollbar': { height: 6 },
-                            '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.2)', borderRadius: 3 },
                         }}>
                             {pendingByClient.map(({ clientName, records }) => (
                                 <Box

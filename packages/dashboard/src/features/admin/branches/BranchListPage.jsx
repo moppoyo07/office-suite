@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../../../firebase/index';
 import { useCurrentUser } from '../../../hooks/useCurrentUser';
 
@@ -29,9 +29,18 @@ export default function BranchListPage() {
     const [branches, setBranches] = useState([]);
     const [companies, setCompanies] = useState({});
     const [loading, setLoading] = useState(true);
-    const { isPlatform } = useCurrentUser();
+    const { isPlatform, companyId, loading: userLoading } = useCurrentUser();
 
     useEffect(() => {
+        // ユーザー情報のロードが終わるまで待つ
+        if (userLoading) return;
+        // 非プラットフォームユーザーはcompanyIdが必須
+        if (!isPlatform && !companyId) {
+            console.warn('companyIdが取得できませんでした');
+            setLoading(false);
+            return;
+        }
+
         const fetchData = async () => {
             try {
                 // 企業データ取得（ID→名前マップ用）
@@ -40,8 +49,9 @@ export default function BranchListPage() {
                 companySnap.forEach(doc => { companyMap[doc.id] = doc.data().name; });
                 setCompanies(companyMap);
 
-                // 支店データ取得
-                const q = query(collection(db, 'branches'), orderBy('createdAt', 'desc'));
+                // 支店データ取得（プラットフォーム管理者は全支店、その他は自社のみ）
+                const branchFilter = !isPlatform ? [where('companyId', '==', companyId)] : [];
+                const q = query(collection(db, 'branches'), ...branchFilter, orderBy('createdAt', 'desc'));
                 const snapshot = await getDocs(q);
                 setBranches(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             } catch (error) {
@@ -51,7 +61,7 @@ export default function BranchListPage() {
             }
         };
         fetchData();
-    }, []);
+    }, [isPlatform, companyId, userLoading]);
 
     return (
         <Box>

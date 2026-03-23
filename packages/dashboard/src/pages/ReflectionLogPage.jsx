@@ -21,8 +21,10 @@ import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/
 import { db } from '../firebase';
 import { format, startOfDay, endOfDay, subDays } from 'date-fns';
 import ja from 'date-fns/locale/ja';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 export default function ReflectionLogPage() {
+    const { companyId, isPlatform } = useCurrentUser();
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -38,6 +40,8 @@ export default function ReflectionLogPage() {
             try {
                 let q;
 
+                const companyFilter = !isPlatform && companyId ? [where('companyId', '==', companyId)] : [];
+
                 if (searchName.trim()) {
                     // 名前検索時：過去30日分を取得
                     const start = subDays(new Date(), 30);
@@ -47,6 +51,7 @@ export default function ReflectionLogPage() {
 
                     q = query(
                         collection(db, 'dailyCheckins'),
+                        ...companyFilter,
                         where('createdAt', '>=', Timestamp.fromDate(start)),
                         where('createdAt', '<=', Timestamp.fromDate(end))
                     );
@@ -57,6 +62,7 @@ export default function ReflectionLogPage() {
 
                     q = query(
                         collection(db, 'dailyCheckins'),
+                        ...companyFilter,
                         where('createdAt', '>=', Timestamp.fromDate(dayStart)),
                         where('createdAt', '<=', Timestamp.fromDate(dayEnd))
                     );

@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { collection, doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from '../features/auth/context/AuthContext';
 import SaveIcon from '@mui/icons-material/Save';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -43,6 +44,9 @@ const generateYearMonths = () => {
 };
 
 export default function StaffWorkSchedulePage() {
+    const { currentUser } = useAuth();
+    const companyId = currentUser?.companyId || null;
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -78,7 +82,8 @@ export default function StaffWorkSchedulePage() {
             setLoading(true);
             setError(null);
             try {
-                const docRef = doc(db, 'staffWorkSchedules', yearMonth);
+                const docId = companyId ? `${companyId}_${yearMonth}` : yearMonth;
+                const docRef = doc(db, 'staffWorkSchedules', docId);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -104,7 +109,7 @@ export default function StaffWorkSchedulePage() {
             }
         };
         fetchData();
-    }, [yearMonth]);
+    }, [yearMonth, companyId]);
 
     // スタッフ追加
     const handleAddStaff = (roleId) => {
@@ -167,9 +172,11 @@ export default function StaffWorkSchedulePage() {
         setSaving(true);
         setError(null);
         try {
-            const docRef = doc(db, 'staffWorkSchedules', yearMonth);
+            const docId = companyId ? `${companyId}_${yearMonth}` : yearMonth;
+            const docRef = doc(db, 'staffWorkSchedules', docId);
             await setDoc(docRef, {
                 yearMonth,
+                companyId: companyId || null,
                 standardHours,
                 staff: staffList.map(s => ({
                     ...s,

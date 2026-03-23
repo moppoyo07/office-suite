@@ -224,6 +224,9 @@ export default function DailyQuestBoard({ currentUser }) {
         <Paper
             elevation={3}
             sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
                 overflow: 'hidden',
                 borderRadius: 2,
                 border: '1px solid rgba(139, 92, 246, 0.2)',
@@ -233,6 +236,7 @@ export default function DailyQuestBoard({ currentUser }) {
             {/* ヘッダーエリア */}
             <Box
                 sx={{
+                    flexShrink: 0,
                     p: 2,
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -277,7 +281,8 @@ export default function DailyQuestBoard({ currentUser }) {
                 </Box>
             </Box>
 
-            {/* クエストリスト */}
+            {/* クエストリスト（スクロール可能エリア） */}
+            <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <Collapse in={isExpanded}>
                 <List sx={{ p: 0 }}>
                     {tasks.map((task) => {
@@ -354,6 +359,7 @@ export default function DailyQuestBoard({ currentUser }) {
                     </Box>
                 )}
             </Collapse>
+            </Box>
 
             {/* クエスト追加ダイアログ */}
             <Dialog open={addDialog} onClose={() => setAddDialog(false)} maxWidth="sm" fullWidth>

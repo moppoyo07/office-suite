@@ -2,6 +2,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./features/auth/context/AuthContext.jsx";
+import { TenantProvider } from "./context/TenantContext.jsx";
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import theme from './theme.js';
 import LoginPage from "./features/auth/LoginPage.jsx";
@@ -33,6 +34,7 @@ function App() {
       <CssBaseline />
       <BrowserRouter>
         <AuthProvider>
+          <TenantProvider>
           {/* ポータルドメイン検知 */}
           <PortalDomainRedirect />
           <Routes>
@@ -48,6 +50,7 @@ function App() {
             {/* --- それ以外の全ての認証済みルートはAppRoutesに委任 --- */}
             <Route path="/*" element={<AppRoutes />} />
           </Routes>
+          </TenantProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

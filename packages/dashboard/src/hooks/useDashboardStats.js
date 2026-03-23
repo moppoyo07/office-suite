@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useTenant } from '../context/TenantContext';
 
 export const useDashboardStats = () => {
+  const { activeCompanyId: companyId } = useTenant();
   const [stats, setStats] = useState({
     activeClients: 0,  // アクティブ利用者数（利用中）
     totalClients: 0,   // 累計登録者数
@@ -23,20 +25,25 @@ export const useDashboardStats = () => {
       today.setHours(0, 0, 0, 0);
       const todayTimestamp = Timestamp.fromDate(today);
 
+      // companyId フィルタ条件
+      const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+
       // 1. アクティブな利用者数を取得（施設内利用 + 施設外利用）
       const activeClientsQuery = query(
         collection(db, 'clients'),
+        ...companyFilter,
         where('status', 'in', ['active_onsite', 'active_remote'])
       );
       const activeClientsSnapshot = await getDocs(activeClientsQuery);
       const activeClients = activeClientsSnapshot.size;
 
-      // 2. 累計登録者数を取得（全レコード数）
-      const allClientsSnapshot = await getDocs(collection(db, 'clients'));
+      // 2. 累計登録者数を取得
+      const allClientsQuery = query(collection(db, 'clients'), ...companyFilter);
+      const allClientsSnapshot = await getDocs(allClientsQuery);
       const totalClients = allClientsSnapshot.size;
 
-      // 2. 今月の総コマ数を取得 (ロジックは正しいので変更なし)
-      const plansQuery = query(collection(db, 'attendancePlans'), where('year', '==', year), where('month', '==', month));
+      // 3. 今月の総コマ数を取得
+      const plansQuery = query(collection(db, 'attendancePlans'), ...companyFilter, where('year', '==', year), where('month', '==', month));
       const plansSnapshot = await getDocs(plansQuery);
       let totalSlotsThisMonth = 0;
       plansSnapshot.forEach(doc => {
@@ -46,8 +53,8 @@ export const useDashboardStats = () => {
         }
       });
 
-      // 3. 今日の利用予定者数を取得 (ロジックは正しいので変更なし)
-      const todayPlansQuery = query(collection(db, 'attendancePlans'), where('plannedDates', 'array-contains', todayTimestamp));
+      // 4. 今日の利用予定者数を取得
+      const todayPlansQuery = query(collection(db, 'attendancePlans'), ...companyFilter, where('plannedDates', 'array-contains', todayTimestamp));
       const todayPlansSnapshot = await getDocs(todayPlansQuery);
       const checkinToday = todayPlansSnapshot.size;
 
@@ -58,7 +65,7 @@ export const useDashboardStats = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // 依存配列は空
+  }, [companyId]);
 
   useEffect(() => {
     fetchStats();

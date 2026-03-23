@@ -9,10 +9,9 @@ const templateLoaders = {
     hiroshima: {
         welfareTraining: () => import('./hiroshima/WelfareTrainingForm'),
     },
-    // 例: 将来の自治体追加
-    // hatsukaichi: {
-    //     welfareTraining: () => import('./hatsukaichi/WelfareTrainingForm'),
-    // },
+    sakamachi: {
+        welfareTraining: () => import('./sakamachi/WelfareTrainingForm'),
+    },
 };
 
 /**

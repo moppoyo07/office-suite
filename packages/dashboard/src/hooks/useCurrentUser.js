@@ -27,7 +27,10 @@ export function useCurrentUser() {
         }
 
         setLoading(true);
-        const userDocRef = doc(db, 'users', currentUser.uid);
+        // userDocId はAuthContextがメール検索で見つけた正しいドキュメントID
+        // uid をそのままドキュメントIDとして使うと見つからない場合があるため
+        const docId = currentUser.userDocId || currentUser.uid;
+        const userDocRef = doc(db, 'users', docId);
 
         const unsubscribe = onSnapshot(
             userDocRef,

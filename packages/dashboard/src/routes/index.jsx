@@ -17,6 +17,8 @@ import AccountingPage from '../pages/AccountingPage.jsx';
 import BatchAttendancePrintPage from '../pages/BatchAttendancePrintPage.jsx';
 import WelfareTrainingPage from '../pages/WelfareTrainingPage.jsx';
 import RetentionSupportPrintPage from '../pages/RetentionSupportPrintPage.jsx';
+import RetentionReportPage from '../pages/RetentionReportPage.jsx';
+import AdminDataMigrationPage from '../pages/AdminDataMigrationPage.jsx';
 import AlertsListPage from '../pages/AlertsListPage.jsx';
 import FollowUpListPage from '../pages/FollowUpListPage.jsx';
 import RoleSetupPage from '../features/admin/RoleSetupPage.jsx';
@@ -66,11 +68,14 @@ export const AppRoutes = () => {
           <Route path="monthly/batch-print" element={<BatchAttendancePrintPage />} />
           <Route path="monthly/welfare-training" element={<WelfareTrainingPage />} />
           <Route path="retention-support/print" element={<RetentionSupportPrintPage />} />
+          <Route path="clients/:clientId/retention-report" element={<RetentionReportPage />} />
+          <Route path="clients/:clientId/retention-report/:yearMonth" element={<RetentionReportPage />} />
           <Route path="accounting" element={<AccountingPage />} />
           <Route path="alerts" element={<AlertsListPage />} />
           <Route path="follow-up-list" element={<FollowUpListPage />} />
           {/* 一時的なロール設定ページ（セットアップ完了後に削除） */}
           <Route path="role-setup" element={<RoleSetupPage />} />
+          <Route path="admin/data-migration" element={<AdminDataMigrationPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
         {/* プラットフォーム管理画面（独自レイアウト） */}

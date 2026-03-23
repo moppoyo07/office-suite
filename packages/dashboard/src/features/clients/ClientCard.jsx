@@ -1,12 +1,13 @@
 // src/features/clients/ClientCard.jsx
 
 import { Card, CardContent, Typography, Box, IconButton, Stack, Divider } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { format, differenceInMonths } from 'date-fns';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 
 // ★★★ 重要：新しい定数をインポート ★★★
 import { CLIENT_STATUS } from '../../constants/clientStatus';
@@ -31,6 +32,7 @@ const followUpTransitions = {
 };
 
 const ClientCard = ({ client, onUpdateStatus, onComplete, onLost, onRetentionNote }) => {
+  const navigate = useNavigate();
 
   const renderCardDetails = () => {
     const inquiryDate   = client.inquiryDate?.toDate   ? format(client.inquiryDate.toDate(),   'yyyy/MM/dd') : null;
@@ -139,6 +141,16 @@ const ClientCard = ({ client, onUpdateStatus, onComplete, onLost, onRetentionNot
             <IconButton title="失注/離脱処理" size="small" color="error" onClick={() => onLost(client.id, client.status)}>
               <CloseIcon fontSize="inherit" />
             </IconButton>
+            {isFollowUpKanban && (
+              <IconButton
+                title="定着支援レポートを見る"
+                size="small"
+                color="info"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/clients/${client.id}/retention-report`); }}
+              >
+                <AssignmentIcon fontSize="inherit" />
+              </IconButton>
+            )}
           </Stack>
 
           {/* 下の段（矢印ボタン） */}

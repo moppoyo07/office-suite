@@ -17,6 +17,7 @@ import {
     AppBar,
     IconButton,
     Chip,
+    Button,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -24,12 +25,14 @@ import BusinessIcon from '@mui/icons-material/Business';
 import StoreIcon from '@mui/icons-material/Store';
 import PeopleIcon from '@mui/icons-material/People';
 import BuildIcon from '@mui/icons-material/Build';
+import MergeTypeIcon from '@mui/icons-material/MergeType';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import SecurityIcon from '@mui/icons-material/Security';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { ROLE_METADATA, isPlatformRole } from '../../constants/roles';
+import { useTenant } from '../../context/TenantContext';
 
 const drawerWidth = 240;
 
@@ -44,6 +47,7 @@ const menuItems = [
     { path: '/admin/average-users-sheet', label: '平均利用者算定', icon: <TableChartIcon />, roles: ['branch_manager'] },
     { path: '/admin/quest-categories', label: 'クエスト管理', icon: <EmojiEventsIcon />, roles: ['company_admin', 'branch_manager'] },
     { path: '/admin/cleanup', label: 'データ整合性', icon: <BuildIcon />, roles: ['company_admin'] },
+    { path: '/admin/data-migration', label: 'データ移行・整理', icon: <MergeTypeIcon />, roles: ['company_admin', 'platform_owner'] },
     { path: '/admin/rbac', label: 'Role Control Panel', icon: <SecurityIcon />, roles: ['platform_owner'] },
 ];
 
@@ -51,6 +55,7 @@ export default function AdminLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const { role, profile } = useCurrentUser();
+    const { isEmulating, emulatingCompany, exitEmulatorMode } = useTenant();
 
     const isActive = (path, exact = false) => {
         if (exact) return location.pathname === path;
@@ -192,6 +197,23 @@ export default function AdminLayout() {
                 }}
             >
                 <Toolbar />
+                {/* エミュレーターバナー */}
+                {isEmulating && (
+                    <Box sx={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        px: 2, py: 0.5, mb: 2,
+                        bgcolor: 'rgba(139, 92, 246, 0.15)',
+                        border: '1px solid rgba(139, 92, 246, 0.4)',
+                        borderRadius: 1,
+                    }}>
+                        <Typography variant="caption" sx={{ color: '#a78bfa', fontWeight: 'bold' }}>
+                            🔍 {emulatingCompany?.name || '企業'} として表示中
+                        </Typography>
+                        <Button size="small" onClick={exitEmulatorMode} sx={{ color: '#a78bfa', fontSize: '0.7rem', py: 0, minWidth: 'auto' }}>
+                            ← 戻る
+                        </Button>
+                    </Box>
+                )}
                 <Outlet />
             </Box>
         </Box>

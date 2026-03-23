@@ -13,6 +13,7 @@ import { db } from '../firebase';
 import { startOfMonth, endOfMonth, getDaysInMonth, addDays, getDay } from 'date-fns';
 import { CLIENT_STATUS } from '../constants/clientStatus';
 import { roundTo30Min } from '../utils/roundTime';
+import { useAuth } from '../features/auth/context/AuthContext';
 
 // 曜日ラベル
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -114,6 +115,8 @@ const generateOneClientHTML = (clientName, recipientId, year, month, records) =>
 export default function BatchAttendancePrintPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const { currentUser } = useAuth();
+    const companyId = currentUser?.companyId || null;
 
     const year = parseInt(searchParams.get('year'));
     const month = parseInt(searchParams.get('month'));
@@ -130,9 +133,11 @@ export default function BatchAttendancePrintPage() {
             try {
                 const monthStart = startOfMonth(new Date(year, month - 1));
                 const monthEnd = endOfMonth(new Date(year, month - 1));
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
 
                 const recordsQuery = query(
                     collection(db, 'attendanceRecords'),
+                    ...companyFilter,
                     where('date', '>=', Timestamp.fromDate(monthStart)),
                     where('date', '<=', Timestamp.fromDate(monthEnd))
                 );
@@ -154,7 +159,7 @@ export default function BatchAttendancePrintPage() {
                     return;
                 }
 
-                const clientsSnap = await getDocs(query(collection(db, 'clients')));
+                const clientsSnap = await getDocs(companyFilter.length ? query(collection(db, 'clients'), ...companyFilter) : collection(db, 'clients'));
                 const clientsData = [];
 
                 clientsSnap.docs.forEach(doc => {
@@ -184,7 +189,7 @@ export default function BatchAttendancePrintPage() {
             }
         };
         fetchData();
-    }, [year, month, type]);
+    }, [year, month, type, companyId]);
 
     // window.open 一括印刷
     const handlePrint = () => {

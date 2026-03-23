@@ -4,6 +4,7 @@ import { db } from '../firebase/index';
 import { CLIENT_STATUS } from '../constants/clientStatus';
 import { addMonths, differenceInDays, startOfDay, format } from 'date-fns';
 import { useAuth } from '../features/auth/context/AuthContext'; // useAuthに変更
+import { useTenant } from '../context/TenantContext';
 
 // アラート種別の設定
 const ALERT_CONFIGS = {
@@ -31,6 +32,7 @@ const getAlertColor = (daysUntil, config) => {
 
 export function useNotificationAlerts() {
     const { currentUser } = useAuth(); // useAuthを使用
+    const { activeCompanyId: companyId } = useTenant();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [incompleteTasks, setIncompleteTasks] = useState([]); // 未完了タスク
@@ -42,6 +44,7 @@ export function useNotificationAlerts() {
         const fetchClients = async () => {
             setLoading(true);
             try {
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
                 const targetStatuses = [
                     CLIENT_STATUS.INTERVIEW,
                     CLIENT_STATUS.TRIAL,
@@ -52,6 +55,7 @@ export function useNotificationAlerts() {
                 ];
                 const qClients = query(
                     collection(db, 'clients'),
+                    ...companyFilter,
                     where('status', 'in', targetStatuses)
                 );
                 const snapshotClients = await getDocs(qClients);
@@ -74,7 +78,7 @@ export function useNotificationAlerts() {
         };
 
         fetchClients();
-    }, []);
+    }, [companyId]);
 
     // 2. 今日のタスクデータをリアルタイム監視
     useEffect(() => {

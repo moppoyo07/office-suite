@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from '../features/auth/context/AuthContext';
 
 // 月（4月始まり）
 const FISCAL_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
@@ -27,6 +28,9 @@ const generateFiscalYears = () => {
 };
 
 export default function ClientAttendanceGanttPage() {
+    const { currentUser } = useAuth();
+    const companyId = currentUser?.companyId || null;
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [fiscalYear, setFiscalYear] = useState(() => {
@@ -46,7 +50,8 @@ export default function ClientAttendanceGanttPage() {
             setError(null);
             try {
                 // 利用者一覧取得
-                const clientsSnap = await getDocs(collection(db, 'clients'));
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+                const clientsSnap = await getDocs(companyFilter.length ? query(collection(db, 'clients'), ...companyFilter) : collection(db, 'clients'));
                 const clientList = clientsSnap.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
@@ -59,6 +64,7 @@ export default function ClientAttendanceGanttPage() {
                 // 出席記録取得
                 const recordsQuery = query(
                     collection(db, 'attendanceRecords'),
+                    ...companyFilter,
                     where('date', '>=', Timestamp.fromDate(startDate)),
                     where('date', '<=', Timestamp.fromDate(endDate)),
                     where('status', '==', 'present')
@@ -88,7 +94,7 @@ export default function ClientAttendanceGanttPage() {
             }
         };
         fetchData();
-    }, [fiscalYear]);
+    }, [fiscalYear, companyId]);
 
     // 月別合計
     const monthlyTotals = useMemo(() => {

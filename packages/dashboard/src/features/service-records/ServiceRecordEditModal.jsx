@@ -184,6 +184,7 @@ export default function ServiceRecordEditModal({
                 attendanceRecordId: attendanceRecord.id,
                 clientId: attendanceRecord.clientId,
                 clientName: attendanceRecord.clientName || '',
+                companyId: currentUser?.companyId || null,
                 date: Timestamp.fromDate(attendanceRecord.date),
                 startTime: roundTo30Min(attendanceRecord.startTime || '') || '',
                 endTime: roundTo30Min(attendanceRecord.endTime || '') || '',
