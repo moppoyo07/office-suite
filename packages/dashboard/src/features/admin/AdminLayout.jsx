@@ -44,7 +44,6 @@ const menuItems = [
     { path: '/admin/branches', label: '支店管理', icon: <StoreIcon />, roles: ['company_admin', 'branch_manager'] },
     { path: '/admin/users', label: 'ユーザー管理', icon: <PeopleIcon />, roles: ['company_admin', 'branch_manager'] },
     { path: '/admin/staff-schedule', label: '勤務形態一覧', icon: <ScheduleIcon />, roles: ['branch_manager'] },
-    { path: '/admin/average-users-sheet', label: '平均利用者算定', icon: <TableChartIcon />, roles: ['branch_manager'] },
     { path: '/admin/quest-categories', label: 'クエスト管理', icon: <EmojiEventsIcon />, roles: ['company_admin', 'branch_manager'] },
     { path: '/admin/cleanup', label: 'データ整合性', icon: <BuildIcon />, roles: ['company_admin'] },
     { path: '/admin/data-migration', label: 'データ移行・整理', icon: <MergeTypeIcon />, roles: ['company_admin', 'platform_owner'] },

@@ -12,6 +12,7 @@ import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import { useAuth } from "../auth/context/AuthContext.jsx";
@@ -198,6 +199,16 @@ function Layout() {
               </ListItem>
             )}
             */}
+
+            {/* 年次処理（移行）— 支店長のみ */}
+            {(role === ROLES.BRANCH_MANAGER || isPlatformOwner) && (
+              <ListItem disablePadding>
+                <ListItemButton component={NavLink} to="/annual">
+                  <ListItemIcon><CalendarMonthIcon sx={{ color: '#f59e0b' }} /></ListItemIcon>
+                  <ListItemText primary="年次処理 (移行)" />
+                </ListItemButton>
+              </ListItem>
+            )}
 
             {/* 管理者・経営者向けメニュー */}
             {isManager && (

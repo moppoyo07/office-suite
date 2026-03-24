@@ -19,6 +19,8 @@ import WelfareTrainingPage from '../pages/WelfareTrainingPage.jsx';
 import RetentionSupportPrintPage from '../pages/RetentionSupportPrintPage.jsx';
 import RetentionReportPage from '../pages/RetentionReportPage.jsx';
 import AdminDataMigrationPage from '../pages/AdminDataMigrationPage.jsx';
+import AnnualReportCenterPage from '../pages/AnnualReportCenterPage.jsx';
+import BasicRewardReportPage from '../pages/BasicRewardReportPage.jsx';
 import AlertsListPage from '../pages/AlertsListPage.jsx';
 import FollowUpListPage from '../pages/FollowUpListPage.jsx';
 import RoleSetupPage from '../features/admin/RoleSetupPage.jsx';
@@ -70,6 +72,8 @@ export const AppRoutes = () => {
           <Route path="retention-support/print" element={<RetentionSupportPrintPage />} />
           <Route path="clients/:clientId/retention-report" element={<RetentionReportPage />} />
           <Route path="clients/:clientId/retention-report/:yearMonth" element={<RetentionReportPage />} />
+          <Route path="annual" element={<AnnualReportCenterPage />} />
+          <Route path="annual/basic-reward" element={<BasicRewardReportPage />} />
           <Route path="accounting" element={<AccountingPage />} />
           <Route path="alerts" element={<AlertsListPage />} />
           <Route path="follow-up-list" element={<FollowUpListPage />} />

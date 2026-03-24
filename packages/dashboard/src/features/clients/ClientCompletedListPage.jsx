@@ -112,10 +112,8 @@ const ClientCompletedListPage = () => {
 
   // 年度選択肢作成
   const currentFiscalYear = new Date().getMonth() < 3 ? new Date().getFullYear() - 1 : new Date().getFullYear();
-  const yearOptions = [];
-  for (let y = currentFiscalYear + 1; y >= 2022; y--) { // 来年度も見れるように+1
-    yearOptions.push(y);
-  }
+  // 現在年度の+3年先〜-5年前まで（ハードコードなし）
+  const yearOptions = Array.from({ length: 9 }, (_, i) => currentFiscalYear + 3 - i);
 
   return (
     <Container maxWidth="xl">

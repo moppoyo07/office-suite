@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { collection, query, where, getDocs, Timestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuth } from '../features/auth/context/AuthContext';
+import { useTenant } from '../context/TenantContext';
 import SaveIcon from '@mui/icons-material/Save';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -33,8 +33,7 @@ const generateFiscalYears = () => {
 };
 
 export default function AverageUsersSheetPage() {
-    const { currentUser } = useAuth();
-    const companyId = currentUser?.companyId || null;
+    const { activeCompanyId: companyId } = useTenant();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -154,7 +153,7 @@ export default function AverageUsersSheetPage() {
         } finally {
             setLoading(false);
         }
-    }, [fiscalYear]);
+    }, [fiscalYear, companyId]);
 
     // 出席日数変更
     const handleAttendanceChange = (clientId, month, value) => {
@@ -199,9 +198,114 @@ export default function AverageUsersSheetPage() {
         }
     };
 
-    // 印刷処理
+    // 印刷処理（A4帳票）
     const handlePrint = () => {
-        window.print();
+        const win = window.open('', '_blank');
+        if (!win) return;
+
+        const monthHeaders = MONTH_LABELS.map(l =>
+            `<td align="center" width="42"><b>${l}</b></td>`
+        ).join('');
+
+        const dataRows = activeClients.map((client, idx) => {
+            const clientData = attendanceData[client.id] || {};
+            const rowTotal = clientTotals[client.id] || 0;
+            const cells = FISCAL_MONTHS.map(m =>
+                `<td align="center">${clientData[m] || ''}</td>`
+            ).join('');
+            return `<tr>
+                <td align="center">${idx + 1}</td>
+                <td align="center">${client.recipientId || ''}</td>
+                <td>${client.name || ''}</td>
+                ${cells}
+                <td align="center"><b>${rowTotal || ''}</b></td>
+            </tr>`;
+        }).join('');
+
+        const opCells = FISCAL_MONTHS.map(m =>
+            `<td align="center">${operatingDays[m] || ''}</td>`
+        ).join('');
+
+        const totalCells = FISCAL_MONTHS.map(m =>
+            `<td align="center"><b>${monthlyTotals[m] || 0}</b></td>`
+        ).join('');
+
+        const avgStr = totalOperatingDays > 0
+            ? (grandTotal / totalOperatingDays).toFixed(2)
+            : '0';
+
+        win.document.write(`<!DOCTYPE html>
+<html lang="ja"><head>
+<meta charset="UTF-8">
+<title>平均利用者数算定シート_${fiscalYear}年度</title>
+<style>
+  body { font-family: "MS Gothic","Hiragino Kaku Gothic ProN",sans-serif; font-size: 10px; background:#fff; color:#000; margin:0; padding:8mm; }
+  h1 { font-size: 14px; text-align: center; margin: 0 0 2px; }
+  h2 { font-size: 10px; text-align: center; font-weight: normal; margin: 0 0 6px; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  td, th { border: 1px solid #000; padding: 2px 3px; font-size: 9.5px; overflow: hidden; }
+  .note { font-size: 8.5px; margin: 3px 0 8px 4px; color: #333; }
+  .result { text-align: right; font-size: 11px; margin-top: 6px; padding: 4px 8px; border: 1px solid #000; display: inline-block; float: right; }
+  @page { size: A4 portrait; margin: 8mm; }
+</style>
+</head><body>
+<h1>平均利用者数算定シート（${fiscalYear}年度）</h1>
+<h2>（生活介護・共同生活援助・就労定着支援・自立生活援助を除く）</h2>
+
+<table>
+  <colgroup>
+    <col width="28">
+    <col width="68">
+    <col width="72">
+    ${FISCAL_MONTHS.map(() => '<col width="42">').join('')}
+    <col width="48">
+  </colgroup>
+  <thead>
+    <tr style="background:#d0e4f7;">
+      <td rowspan="2" align="center" valign="middle"><b>No.</b></td>
+      <td rowspan="2" align="center" valign="middle"><b>受給者番号</b></td>
+      <td rowspan="2" align="center" valign="middle"><b>氏名</b></td>
+      <td colspan="12" align="center"><b>前年度実績（利用延べ日数）</b></td>
+      <td rowspan="2" align="center" valign="middle" style="font-size:8.5px"><b>日数計<br>（利用者<br>延べ日数）</b></td>
+    </tr>
+    <tr style="background:#d0e4f7;">
+      ${monthHeaders}
+    </tr>
+  </thead>
+  <tbody>
+    ${dataRows}
+    <tr style="background:#f5f5f5;">
+      <td colspan="3" align="center"><b>計</b></td>
+      ${totalCells}
+      <td align="center"><b>${grandTotal}</b></td>
+    </tr>
+  </tbody>
+</table>
+
+<p class="note">※ 行が不足する場合は、追加して記載すること。</p>
+
+<table>
+  <colgroup>
+    <col width="168">
+    ${FISCAL_MONTHS.map(() => '<col width="42">').join('')}
+    <col width="48">
+  </colgroup>
+  <tbody>
+    <tr style="background:#fffde7;">
+      <td align="center"><b>開　所　日　数</b></td>
+      ${opCells}
+      <td align="center"><b>${totalOperatingDays}日</b></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="result">
+  前年度平均利用者数　<b style="font-size:14px">${avgStr}</b>　人
+  <span style="font-size:8px;display:block">（延べ${grandTotal}人日 ÷ 開所${totalOperatingDays}日）</span>
+</div>
+</body></html>`);
+        win.document.close();
+        setTimeout(() => { win.print(); win.close(); }, 400);
     };
 
     // 月別延べ利用者数
