@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, where, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/index.js";
 import { Box, Paper, Typography, CircularProgress, Stack, Chip, IconButton, Dialog, DialogTitle, DialogContent } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ActivityLogForm from './ActivityLogForm';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const formatDate = (timestamp) => {
   if (!timestamp || !timestamp.toDate) return '日付不明';
@@ -30,11 +31,13 @@ function ActivityLogList({ clientId }) {
   const [loading, setLoading] = useState(true);
   const [editingLog, setEditingLog] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const { companyId, loading: userLoading } = useCurrentUser();
 
   useEffect(() => {
-    if (!clientId) { setLoading(false); return; }
+    if (userLoading) return;
+    if (!clientId || !companyId) { setLoading(false); return; }
     const logsRef = collection(db, 'clients', clientId, 'activity_logs');
-    const q = query(logsRef, orderBy('createdAt', 'desc'));
+    const q = query(logsRef, where('companyId', '==', companyId), orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const logsData = [];
@@ -48,7 +51,7 @@ function ActivityLogList({ clientId }) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [clientId]);
+  }, [clientId, companyId, userLoading]);
 
   const handleDelete = async (logId) => {
     if (!window.confirm('この記録を削除しますか？（取り消せません）')) return;

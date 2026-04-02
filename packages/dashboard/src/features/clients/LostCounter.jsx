@@ -5,6 +5,7 @@ import { Box, Typography, Grid } from '@mui/material';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/index';
 import { CLIENT_STATUS, STATUS_CONFIG } from '../../constants/clientStatus';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 export const LostCounter = () => {
   const targetPhases = [
@@ -15,13 +16,16 @@ export const LostCounter = () => {
   ];
 
   const [stats, setStats] = useState({});
+  const { companyId, loading: userLoading } = useCurrentUser();
 
   useEffect(() => {
+    if (userLoading || !companyId) return;
     const fetchLostStats = async () => {
       try {
         const q = query(
           collection(db, 'clients'),
-          where('status', '==', CLIENT_STATUS.CLOSED)
+          where('companyId', '==', companyId),
+          where('status', 'in', [CLIENT_STATUS.CLOSED, 'closed-lost'])
         );
         const querySnapshot = await getDocs(q);
 
@@ -43,7 +47,7 @@ export const LostCounter = () => {
     };
 
     fetchLostStats();
-  }, []);
+  }, [companyId, userLoading]);
 
   return (
     <Box

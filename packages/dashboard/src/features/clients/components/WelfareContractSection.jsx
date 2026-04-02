@@ -1,4 +1,4 @@
-import { Grid, Stack, TextField, Typography, Box, Button, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Grid, Stack, TextField, Typography, Box, Button, FormControl, InputLabel, Select, MenuItem, Chip } from '@mui/material';
 import { format } from 'date-fns';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebase/index';
@@ -75,6 +75,16 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
         <DisplayRow>
           <DisplayItem label="診断名" value={data?.diagnosisName} />
         </DisplayRow>
+        {data?.disabilityTypes?.length > 0 && (
+          <DisplayRow>
+            <Grid size={12}>
+              <Typography variant="caption" color="text.secondary">障害種別</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.5 }}>
+                {data.disabilityTypes.map(t => <Chip key={t} label={t} size="small" variant="outlined" />)}
+              </Box>
+            </Grid>
+          </DisplayRow>
+        )}
         <DisplayRow>
           <DisplayItem label="障害者手帳" value={data?.disabilityHandbook} sm={3} />
           <DisplayItem label="受給者証番号" value={data?.recipientId} sm={3} />

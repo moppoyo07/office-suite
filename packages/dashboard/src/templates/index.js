@@ -12,6 +12,9 @@ const templateLoaders = {
     sakamachi: {
         welfareTraining: () => import('./sakamachi/WelfareTrainingForm'),
     },
+    miyoshi: {
+        welfareTraining: () => import('./miyoshi/WelfareTrainingForm'),
+    },
 };
 
 /**

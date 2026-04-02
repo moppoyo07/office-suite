@@ -1,265 +1,278 @@
 import {
-  Box, Typography, Divider, Stack, TextField, Button, Grid,
-  FormGroup, FormControlLabel, Checkbox, RadioGroup, Radio,
-  FormControl, FormLabel, Chip, Alert
+  Box, Typography, Divider, Stack, Chip, Alert, Button, Grid
 } from '@mui/material';
+import { useNavigate, useParams } from 'react-router-dom';
+import EditIcon from '@mui/icons-material/Edit';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
-// 服薬管理の選択肢を日本語に変換するヘルパー
-const getMedicationLabel = (value) => {
-  switch (value) {
-    case 'self': return '自己管理';
-    case 'family': return '家族管理';
-    case 'none': return '服薬なし';
-    default: return '未設定';
-  }
-};
+// --- 表示用の小部品 ---
 
-// 行動面の項目定義
-const behaviorItems = [
-  { id: 'panic', label: 'パニック' },
-  { id: 'obsession', label: 'こだわり' },
-  { id: 'compulsion', label: '強迫' },
-  { id: 'hallucination', label: '幻覚・妄想' },
-  { id: 'seizure', label: '発作' },
-  { id: 'other', label: 'その他' },
+const SectionBlock = ({ title, children }) => (
+  <Box sx={{ mb: 3 }}>
+    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderLeft: '3px solid #64748b', pl: 1 }}>
+      {title}
+    </Typography>
+    {children}
+  </Box>
+);
+
+const LabelValue = ({ label, value }) => (
+  <Box>
+    <Typography variant="caption" color="text.secondary">{label}</Typography>
+    <Typography variant="body2" sx={{ mt: 0.25 }}>{value || '未記入'}</Typography>
+  </Box>
+);
+
+const ChipGroup = ({ items }) => (
+  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+    {items && items.length > 0
+      ? items.map((s, i) => <Chip key={i} label={s} size="small" variant="outlined" />)
+      : <Typography variant="body2" color="text.secondary">なし</Typography>}
+  </Box>
+);
+
+const STATUS_LABEL = { stable: '安定している', active: '症状がある', unknown: 'わからない' };
+const ADMISSION_LABEL = { none: 'なし', yes: 'あり' };
+const VISITING_LABEL = { yes: '通院している', no: '通院していない' };
+const MEDICATION_LABEL = { none: 'なし', yes: 'あり' };
+const MANAGEMENT_LABEL = { self: '自己管理', family: '家族保管', other: 'その他' };
+const ADHERENCE_LABEL = { good: '飲み忘れがない', poor: '飲み忘れがある', adjusting: '調整中' };
+const BEHAVIOR_STATUS_LABEL = { none: '特にない', yes: 'ある', unknown: 'わからない' };
+
+const BEHAVIOR_ITEMS = [
+  { key: 'panic',        label: 'パニック' },
+  { key: 'obsession',    label: 'こだわり' },
+  { key: 'compulsion',   label: '強迫行為・強迫観念' },
+  { key: 'hallucination',label: '幻覚・妄想' },
+  { key: 'seizure',      label: '発作' },
+  { key: 'other',        label: 'その他' },
 ];
 
-const HealthStatusSection = ({ isEditing, data, handleChange, handleSave, handleCancelEdit }) => {
+const COPING_LABEL = { self: '自分の対処法がある', others: '周りの対処法がある', none: '対処方法がない' };
 
-  // チェックボックス用の特別なハンドラ
-  const handleCheckboxChange = (fieldName, value, checked) => {
-    const currentValues = data[fieldName] || [];
-    let newValues;
-    if (checked) {
-      newValues = [...currentValues, value];
-    } else {
-      newValues = currentValues.filter(item => item !== value);
-    }
-    handleChange({ target: { name: fieldName, value: newValues } });
-  };
+// --- メインコンポーネント ---
 
-  // 「あり」なのに支援員コメントが空の項目
-  const missingStaffNotes = behaviorItems.filter(item =>
-    data[`behavior_${item.id}_check`] === 'yes' &&
-    !data[`behavior_${item.id}_staff_note`]
+const HealthStatusSection = ({ mentalData, behaviorsData }) => {
+  const navigate = useNavigate();
+  const { clientId } = useParams();
+
+  const m = mentalData || {};
+  const b = behaviorsData || {};
+
+  const disabilityStatus = m.disabilityStatus || {};
+  const treatmentStatus  = m.treatmentStatus  || {};
+  const hospitalStatus   = m.hospitalStatus   || {};
+  const condition        = m.condition        || {};
+  const badSignals       = m.badSignals       || {};
+  const copingMethods    = m.copingMethods    || {};
+  const consultation     = m.consultation     || {};
+  const medication       = m.medication       || {};
+
+  // 「ある」なのに支援者追記が空の行動項目
+  const behaviorWarnings = BEHAVIOR_ITEMS.filter(
+    item => b[item.key]?.status === 'yes' && !b[item.key]?.staffNote
   );
 
-  // --- 表示モード ---
-  const renderDisplayMode = () => (
-    <Stack spacing={3}>
-      {/* 支援員コメント未記入アラート */}
-      {missingStaffNotes.length > 0 && (
-        <Alert severity="warning" icon={<WarningAmberIcon />}
-          sx={{ '& .MuiAlert-message': { width: '100%' } }}
-        >
-          <Typography variant="subtitle2" fontWeight="bold">
-            支援員コメント未記入
-          </Typography>
-          <Typography variant="body2">
-            行動面の「{missingStaffNotes.map(i => i.label).join('、')}」について、
-            支援員コメントが未入力です。編集モードで記入してください。
-          </Typography>
-        </Alert>
-      )}
-
-      {/* 1. 体調不良時のサイン */}
-      <Box>
-        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-          体調不良時のサイン
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {data.healthSigns && data.healthSigns.length > 0 ? (
-            data.healthSigns.map((sign, index) => (
-              <Chip key={index} label={sign} color="warning" variant="outlined" size="small" />
-            ))
-          ) : (
-            <Typography variant="body1">特になし</Typography>
-          )}
-        </Box>
-      </Box>
-
-      <Divider sx={{ borderStyle: 'dashed' }} />
-
-      {/* 2. 服薬管理 & 対処法 */}
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            服薬管理方法
-          </Typography>
-          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-            {getMedicationLabel(data.medicationManagement)}
-          </Typography>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 8 }}>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            体調不良時の対処法
-          </Typography>
-          <PaperContent text={data.copingMethods} />
-        </Grid>
-      </Grid>
-
-      <Divider sx={{ borderStyle: 'dashed' }} />
-
-      {/* 3. 行動面の課題 - 支援員コメント表示 */}
-      <Box>
-        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-          行動面の課題 (支援員コメント)
-        </Typography>
-        {behaviorItems.map(item => {
-          const check = data[`behavior_${item.id}_check`];
-          if (check !== 'yes') return null;
-          const staffNote = data[`behavior_${item.id}_staff_note`];
-          return (
-            <Box key={item.id} sx={{ mb: 1.5, p: 1.5, bgcolor: staffNote ? 'action.hover' : 'warning.light', borderRadius: 1, border: '1px solid', borderColor: staffNote ? 'divider' : 'warning.main' }}>
-              <Typography variant="subtitle2" fontWeight="bold">
-                {item.label}
-                {!staffNote && <Chip label="未記入" size="small" color="warning" sx={{ ml: 1 }} />}
-              </Typography>
-              {data[`behavior_${item.id}_comment_self`] && (
-                <Typography variant="body2" color="text.secondary">本人対処: {data[`behavior_${item.id}_comment_self`]}</Typography>
-              )}
-              {data[`behavior_${item.id}_comment_others`] && (
-                <Typography variant="body2" color="text.secondary">周囲対処: {data[`behavior_${item.id}_comment_others`]}</Typography>
-              )}
-              <Typography variant="body1" sx={{ mt: 0.5, fontWeight: 500 }}>
-                支援員: {staffNote || '（未記入）'}
-              </Typography>
-            </Box>
-          );
-        })}
-        {behaviorItems.every(item => data[`behavior_${item.id}_check`] !== 'yes') && (
-          <Typography variant="body2" color="text.secondary">該当なし</Typography>
-        )}
-      </Box>
-    </Stack>
-  );
-
-  // --- 編集モード ---
-  const renderEditMode = () => (
-    <Stack spacing={3} component="form" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
-
-      {/* 障害の把握 */}
-      <FormControl component="fieldset">
-        <FormLabel component="legend" sx={{ fontWeight: 'bold', mb: 1 }}>体調不良時のサイン（複数選択可）</FormLabel>
-        <FormGroup row>
-          {['幻聴・妄想', '不眠', 'イライラ', '頭痛', '食欲不振', '意欲低下'].map((sign) => (
-            <FormControlLabel
-              key={sign}
-              control={
-                <Checkbox
-                  checked={data.healthSigns?.includes(sign) || false}
-                  onChange={(e) => handleCheckboxChange('healthSigns', sign, e.target.checked)}
-                />
-              }
-              label={sign}
-            />
-          ))}
-        </FormGroup>
-      </FormControl>
-
-      <Divider />
-
-      {/* 服薬管理 */}
-      <FormControl component="fieldset">
-        <FormLabel component="legend" sx={{ fontWeight: 'bold', mb: 1 }}>服薬管理方法</FormLabel>
-        <RadioGroup row name="medicationManagement" value={data.medicationManagement || ''} onChange={handleChange}>
-          <FormControlLabel value="self" control={<Radio />} label="自己管理" />
-          <FormControlLabel value="family" control={<Radio />} label="家族管理" />
-          <FormControlLabel value="none" control={<Radio />} label="服薬なし" />
-        </RadioGroup>
-      </FormControl>
-
-      <Divider />
-
-      {/* 対処法 */}
-      <TextField
-        name="copingMethods"
-        label="体調不良時の対処法"
-        placeholder="例：静かな場所で休む、音楽を聴く、頓服を飲むなど"
-        value={data.copingMethods || ''}
-        onChange={handleChange}
-        fullWidth
-        multiline
-        minRows={3}
-      />
-
-      <Divider />
-
-      {/* 行動面の支援員コメント */}
-      <Box>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-          行動面 - 支援員コメント
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          アンケートで「あり」と回答された項目について、支援員のコメントを記入してください。
-        </Typography>
-        {behaviorItems.map(item => {
-          const check = data[`behavior_${item.id}_check`];
-          if (check !== 'yes') return null;
-          return (
-            <Box key={item.id} sx={{ mb: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                {item.label}
-              </Typography>
-              {data[`behavior_${item.id}_comment_self`] && (
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                  本人: {data[`behavior_${item.id}_comment_self`]}
-                </Typography>
-              )}
-              {data[`behavior_${item.id}_comment_others`] && (
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  周囲: {data[`behavior_${item.id}_comment_others`]}
-                </Typography>
-              )}
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                size="small"
-                name={`behavior_${item.id}_staff_note`}
-                label="支援員コメント"
-                value={data[`behavior_${item.id}_staff_note`] || ''}
-                onChange={handleChange}
-                placeholder="この行動に関する支援員の観察・対応メモ"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: !data[`behavior_${item.id}_staff_note`] ? '#fff8e1' : 'inherit',
-                  }
-                }}
-              />
-            </Box>
-          );
-        })}
-        {behaviorItems.every(item => data[`behavior_${item.id}_check`] !== 'yes') && (
-          <Typography variant="body2" color="text.secondary">
-            アンケートで行動面の課題が「あり」と回答された項目がありません。
-          </Typography>
-        )}
-      </Box>
-
-      <Box sx={{ display: 'flex', gap: 1, pt: 2 }}>
-        <Button type="submit" variant="contained" color="primary">保存</Button>
-        <Button variant="outlined" onClick={handleCancelEdit}>キャンセル</Button>
-      </Box>
-    </Stack>
-  );
+  const hasAnyData = m.disabilityStatus || m.badSignals || m.medication || Object.keys(b).length > 0;
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>心身の状況</Typography>
-      <Divider sx={{ my: 2 }} />
-      {isEditing ? renderEditMode() : renderDisplayMode()}
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="h5">心身の状況</Typography>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<EditIcon />}
+          onClick={() => navigate(`/clients/${clientId}/assessment`)}
+        >
+          アセスメントで編集
+        </Button>
+      </Stack>
+      <Divider sx={{ mb: 3 }} />
+
+      {!hasAnyData && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          アセスメントがまだ入力されていません。「アセスメントで編集」から入力してください。
+        </Alert>
+      )}
+
+      {behaviorWarnings.length > 0 && (
+        <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 2 }}>
+          行動面（{behaviorWarnings.map(i => i.label).join('、')}）の支援者追記が未入力です。
+        </Alert>
+      )}
+
+      {/* 障害の状況 */}
+      <SectionBlock title="障害の状況">
+        <Stack spacing={1}>
+          <LabelValue label="障害特性・症状" value={disabilityStatus.description} />
+          {disabilityStatus.staffNote && <LabelValue label="支援者追記" value={disabilityStatus.staffNote} />}
+        </Stack>
+      </SectionBlock>
+
+      {/* 療育・通院・入院 */}
+      <SectionBlock title="療育・通院・入院の状況">
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <LabelValue label="精神症状の診断確定時期" value={treatmentStatus.diagnosisDate} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <LabelValue label="きっかけ" value={treatmentStatus.trigger} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <LabelValue label="初回受診時期" value={hospitalStatus.firstVisit} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <LabelValue label="通院頻度" value={hospitalStatus.freq} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 2 }}>
+            <LabelValue label="入院歴" value={ADMISSION_LABEL[hospitalStatus.admission]} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 2 }}>
+            <LabelValue label="現在の通院" value={VISITING_LABEL[hospitalStatus.currentlyVisiting]} />
+          </Grid>
+          {hospitalStatus.staffNote && (
+            <Grid size={12}>
+              <LabelValue label="支援者追記" value={hospitalStatus.staffNote} />
+            </Grid>
+          )}
+        </Grid>
+      </SectionBlock>
+
+      {/* 現在の病状 */}
+      <SectionBlock title="現在の病状">
+        <Stack spacing={1}>
+          <LabelValue label="現在の状態" value={STATUS_LABEL[condition.status]} />
+          {condition.status === 'active' && <LabelValue label="状況の詳細" value={condition.detail} />}
+          {condition.staffNote && <LabelValue label="支援者追記" value={condition.staffNote} />}
+        </Stack>
+      </SectionBlock>
+
+      {/* 体調不良のサイン */}
+      <SectionBlock title="体調不良のサイン">
+        <Stack spacing={1.5}>
+          <Box>
+            <Typography variant="caption" color="text.secondary">サイン</Typography>
+            <Box sx={{ mt: 0.5 }}><ChipGroup items={badSignals.signs} /></Box>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary">起きやすい状況</Typography>
+            <Box sx={{ mt: 0.5 }}><ChipGroup items={badSignals.triggers} /></Box>
+          </Box>
+          {badSignals.staffNote && <LabelValue label="支援者追記" value={badSignals.staffNote} />}
+        </Stack>
+      </SectionBlock>
+
+      {/* 体調不良時の対処法 */}
+      <SectionBlock title="体調不良時の対処法">
+        <Stack spacing={1.5}>
+          <Box>
+            <Typography variant="caption" color="text.secondary">対処法</Typography>
+            <Box sx={{ mt: 0.5 }}><ChipGroup items={copingMethods.methods} /></Box>
+          </Box>
+          {copingMethods.other && <LabelValue label="その他・詳細" value={copingMethods.other} />}
+          {copingMethods.staffNote && <LabelValue label="支援者追記" value={copingMethods.staffNote} />}
+        </Stack>
+      </SectionBlock>
+
+      {/* 相談相手 */}
+      <SectionBlock title="相談相手">
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <LabelValue label="相談相手" value={consultation.partner} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <LabelValue label="氏名" value={consultation.name} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <LabelValue label="続柄・関係" value={consultation.relation} />
+          </Grid>
+          {consultation.staffNote && (
+            <Grid size={12}>
+              <LabelValue label="支援者追記" value={consultation.staffNote} />
+            </Grid>
+          )}
+        </Grid>
+      </SectionBlock>
+
+      {/* 服薬管理 */}
+      <SectionBlock title="服薬管理">
+        <Stack spacing={1}>
+          <LabelValue label="服薬の有無" value={MEDICATION_LABEL[medication.status]} />
+          {medication.status === 'yes' && (
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 3 }}>
+                <LabelValue label="1日の回数" value={medication.times} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 5 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">タイミング</Typography>
+                  <Box sx={{ mt: 0.5 }}><ChipGroup items={medication.timing} /></Box>
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 2 }}>
+                <LabelValue label="整備方法" value={MANAGEMENT_LABEL[medication.management]} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 2 }}>
+                <LabelValue label="服薬状況" value={ADHERENCE_LABEL[medication.adherence]} />
+              </Grid>
+            </Grid>
+          )}
+          {medication.staffNote && <LabelValue label="支援者追記" value={medication.staffNote} />}
+        </Stack>
+      </SectionBlock>
+
+      <Divider sx={{ my: 3 }} />
+
+      {/* 行動について */}
+      <SectionBlock title="行動面">
+        {BEHAVIOR_ITEMS.map(({ key, label }) => {
+          const item = b[key] || {};
+          return (
+            <Box
+              key={key}
+              sx={{
+                mb: 1.5, p: 1.5, borderRadius: 1, border: '1px solid',
+                borderColor: item.status === 'yes' && !item.staffNote ? 'warning.main' : 'divider',
+                bgcolor: item.status === 'yes' && !item.staffNote ? 'warning.light' : 'action.hover',
+              }}
+            >
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                <Typography variant="subtitle2" fontWeight="bold">{label}</Typography>
+                <Chip
+                  label={BEHAVIOR_STATUS_LABEL[item.status] || '未入力'}
+                  size="small"
+                  color={item.status === 'yes' ? 'error' : item.status === 'none' ? 'success' : 'default'}
+                  variant="outlined"
+                />
+              </Stack>
+              {item.status === 'yes' && (
+                <Stack spacing={0.5} sx={{ pl: 1 }}>
+                  {item.coping?.length > 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      対処: {item.coping.map(c => COPING_LABEL[c] || c).join('・')}
+                    </Typography>
+                  )}
+                  {item.selfComment && (
+                    <Typography variant="body2" color="text.secondary">本人: {item.selfComment}</Typography>
+                  )}
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    支援者: {item.staffNote || '（未記入）'}
+                    {!item.staffNote && <Chip label="要記入" size="small" color="warning" sx={{ ml: 1 }} />}
+                  </Typography>
+                </Stack>
+              )}
+            </Box>
+          );
+        })}
+        {b.behaviorNotes && (
+          <Box sx={{ mt: 1 }}>
+            <LabelValue label="特記事項" value={b.behaviorNotes} />
+          </Box>
+        )}
+      </SectionBlock>
     </Box>
   );
 };
-
-// 改行コードを正しく表示するための小さなコンポーネント
-const PaperContent = ({ text }) => (
-  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-    {text || '未設定'}
-  </Typography>
-);
 
 export default HealthStatusSection;

@@ -15,6 +15,12 @@ export const followUpKanbanColumns = [
   { id: 'm5', title: '5ヶ月目', status: 'follow-up-m5' },
 ];
 
+const LOST_REASON_LABELS = {
+  other: 'その他', details_mismatch: '条件不一致', price: '料金・費用',
+  distance: '通所困難', atmosphere: '雰囲気', health: '体調不良',
+  transferred: '他事業所へ', expired: '期間満了', drop_out: '途中退所',
+};
+
 export const useFollowUpClients = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +63,7 @@ export const useFollowUpClients = () => {
 
   const handleUpdateStatus = useCallback(async (clientId, newStatus) => {
     try {
-      await updateDoc(doc(db, "clients", clientId), { status: newStatus });
+      await updateDoc(doc(db, "clients", clientId), { status: newStatus, updatedAt: serverTimestamp() });
     } catch (error) {
       console.error("ステータス更新エラー:", error);
     }
@@ -72,8 +78,9 @@ export const useFollowUpClients = () => {
     if (!completionTargetId || !completionDate) return;
     try {
       await updateDoc(doc(db, "clients", completionTargetId), {
-        status: 'completed',
-        followUpCompletionDate: completionDate
+        status: CLIENT_STATUS.COMPLETED,
+        followUpCompletionDate: completionDate,
+        updatedAt: serverTimestamp()
       });
     } catch (error) {
       console.error("完了処理エラー:", error);
@@ -83,30 +90,38 @@ export const useFollowUpClients = () => {
     }
   }, [completionTargetId]);
 
-  const handleOpenLostModal = useCallback((clientId, currentStatus) => {
-    setLostTarget({ id: clientId, status: currentStatus });
+  const handleOpenLostModal = useCallback((clientId, currentStatus, clientName) => {
+    setLostTarget({ id: clientId, status: currentStatus, name: clientName || '' });
     setIsLostModalOpen(true);
   }, []);
 
-  // ★修正: ロスト時にステータスを更新し、フェーズ記録も行うように修正
+  // 離職処理（定着支援中に職を失った場合）
   const handleConfirmLost = useCallback(async (reason, details) => {
     if (!lostTarget) return;
     try {
       await updateDoc(doc(db, "clients", lostTarget.id), {
-        status: CLIENT_STATUS.CLOSED,
-        closedType: 'lost',
-        lostAtPhase: lostTarget.status,
+        status: CLIENT_STATUS.RETIRED,
+        lostAtPhase: lostTarget.status,  // follow-up-m* をそのまま記録
         lostReason: reason,
         lostReasonDetails: details,
         updatedAt: serverTimestamp()
       });
+      const reasonLabel = LOST_REASON_LABELS[reason] || reason;
+      await saveLog(
+        lostTarget.id,
+        {
+          type: 'lost',
+          content: `【離職】\n理由: ${reasonLabel}${details ? '\n詳細: ' + details : ''}`,
+        },
+        lostTarget.name || ''
+      );
     } catch (error) {
-      console.error("退職処理エラー:", error);
+      console.error("離職処理エラー:", error);
     } finally {
       setIsLostModalOpen(false);
       setLostTarget(null);
     }
-  }, [lostTarget]);
+  }, [lostTarget, saveLog]);
 
 
 

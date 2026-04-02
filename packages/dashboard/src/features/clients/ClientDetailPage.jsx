@@ -12,21 +12,13 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import PostAddIcon from '@mui/icons-material/PostAdd';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import BlockIcon from '@mui/icons-material/Block';
-import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import PrintIcon from '@mui/icons-material/Print';
 
 // カスタムフック
-import { useClientUpdater } from '../../hooks/useClientUpdater';
 import { useActivityLog } from '../../hooks/useActivityLog';
+import { useAssessment } from '../assessment/hooks/useAssessment';
 
 // モーダルコンポーネント
-import EmploymentInfoModal from './components/EmploymentInfoModal.jsx';
-import LostReasonModal from './components/LostReasonModal.jsx';
-import StatusChangeModal from './components/StatusChangeModal.jsx';
-import RetentionPlanInputModal from './components/RetentionPlanInputModal.jsx';
-
 // セクションコンポーネント
 import BasicInfoSection from './components/BasicInfoSection.jsx';
 import WelfareContractSection from './components/WelfareContractSection.jsx';
@@ -51,18 +43,14 @@ function ClientDetailPage() {
   const { currentUser } = useAuth();
 
   const { saveLog, isSaving: isSavingLog } = useActivityLog();
+  const { assessment } = useAssessment(clientId);
 
   const [selectedMenu, setSelectedMenu] = useState('basic');
   const [clientData, setClientData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(null);
-
   const [openLogModal, setOpenLogModal] = useState(false);
-  const [isEmploymentModalOpen, setIsEmploymentModalOpen] = useState(false);
-  const [isLostModalOpen, setIsLostModalOpen] = useState(false);
-  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
 
   const fetchClientData = useCallback(async () => {
     if (!clientId) { setLoading(false); return; }
@@ -83,8 +71,6 @@ function ClientDetailPage() {
       setLoading(false);
     }
   }, [clientId, navigate]);
-
-  const { graduateClient, loseClient } = useClientUpdater(fetchClientData);
 
   useEffect(() => { fetchClientData(); }, [fetchClientData]);
 
@@ -120,32 +106,6 @@ function ClientDetailPage() {
     return result;
   };
 
-  const handleConfirmEmployment = async (data) => {
-    await graduateClient(clientId, data);
-    setIsEmploymentModalOpen(false);
-    fetchClientData();
-    // 就職確定の場合のみ計画書入力モーダルを開く
-    if (data.type === 'employment') {
-      setIsPlanModalOpen(true);
-    }
-  };
-
-  const handleConfirmLost = async (reason, details) => {
-    await loseClient(clientId, { reason, details, currentStatus: clientData?.status });
-    setIsLostModalOpen(false);
-  };
-
-  const handleUpdateStatus = async (newStatus) => {
-    if (!clientId) return;
-    try {
-      await updateDoc(doc(db, "clients", clientId), { status: newStatus, updatedAt: serverTimestamp() });
-      setClientData(prev => ({ ...prev, status: newStatus }));
-    } catch (error) {
-      console.error("ステータス更新エラー:", error);
-      alert("更新に失敗しました");
-    }
-  };
-
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
   }
@@ -173,15 +133,6 @@ function ClientDetailPage() {
               onClick={() => window.open(`/clients/${clientId}/print`, '_blank')}
             >
               帳票印刷
-            </Button>
-            <Button variant="outlined" color="success" startIcon={<CheckCircleIcon />} onClick={() => setIsEmploymentModalOpen(true)}>
-              卒業・退所
-            </Button>
-            <Button variant="outlined" color="error" startIcon={<BlockIcon />} onClick={() => setIsLostModalOpen(true)}>
-              利用終了
-            </Button>
-            <Button variant="outlined" startIcon={<PublishedWithChangesIcon />} onClick={() => setIsStatusModalOpen(true)}>
-              ステータス変更
             </Button>
             <Button variant="contained" color="primary" startIcon={<PostAddIcon />} onClick={() => setOpenLogModal(true)}>
               活動記録を追加
@@ -242,7 +193,10 @@ function ClientDetailPage() {
               <RelatedOrgsSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit} />
             )}
             {selectedMenu === 'health' && (
-              <HealthStatusSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit} />
+              <HealthStatusSection
+                mentalData={assessment?.data?.mentalAssessment}
+                behaviorsData={assessment?.data?.behaviors}
+              />
             )}
             {selectedMenu === 'assessment' && (
               <AssessmentListPanel
@@ -268,30 +222,6 @@ function ClientDetailPage() {
           />
         </DialogContent>
       </Dialog>
-
-      <EmploymentInfoModal
-        open={isEmploymentModalOpen}
-        onClose={() => setIsEmploymentModalOpen(false)}
-        onSubmit={handleConfirmEmployment}
-      />
-      <LostReasonModal
-        open={isLostModalOpen}
-        onClose={() => setIsLostModalOpen(false)}
-        onSubmit={handleConfirmLost}
-      />
-      <StatusChangeModal
-        open={isStatusModalOpen}
-        onClose={() => setIsStatusModalOpen(false)}
-        currentStatus={clientData?.status}
-        onUpdate={handleUpdateStatus}
-      />
-      <RetentionPlanInputModal
-        open={isPlanModalOpen}
-        onClose={() => setIsPlanModalOpen(false)}
-        onSubmit={() => { setIsPlanModalOpen(false); fetchClientData(); }}
-        clientId={clientId}
-        clientName={clientData?.name}
-      />
     </>
   );
 }

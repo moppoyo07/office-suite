@@ -29,12 +29,20 @@ const StatusChangeModal = ({ open, onClose, currentStatus, onUpdate }) => {
               label="新しいステータス"
               onChange={(e) => setNewStatus(e.target.value)}
             >
-              {/* 辞書を使って日本語の選択肢を生成 */}
-              {Object.values(CLIENT_STATUS).map((statusKey) => (
-                <MenuItem key={statusKey} value={statusKey}>
-                  {STATUS_CONFIG[statusKey]?.label || statusKey}
-                </MenuItem>
-              ))}
+              {/* 利用終了系は正規ルート（ロスト・卒業処理）から行うため除外 */}
+              {Object.values(CLIENT_STATUS)
+                .filter(s => ![
+                  CLIENT_STATUS.CLOSED,
+                  CLIENT_STATUS.GRADUATED,
+                  CLIENT_STATUS.EXPIRED_GRADUATION,
+                  CLIENT_STATUS.COMPLETED,
+                  CLIENT_STATUS.RETIRED,
+                ].includes(s))
+                .map((statusKey) => (
+                  <MenuItem key={statusKey} value={statusKey}>
+                    {STATUS_CONFIG[statusKey]?.label || statusKey}
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
         </Box>

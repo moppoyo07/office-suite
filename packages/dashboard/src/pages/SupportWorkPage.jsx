@@ -254,7 +254,7 @@ const SupportWorkPage = () => {
           const clientSnap = await getDoc(clientRef);
           if (clientSnap.exists()) clientName = clientSnap.data().name;
         }
-        return { id: logDoc.id, clientId: clientRef ? clientRef.id : null, clientName, ...logData };
+        return { id: logDoc.id, ...logData, clientId: clientRef ? clientRef.id : null, clientName: logData.clientName || clientName };
       }));
       setDailyLogs(logsWithClientName);
     } catch (error) {

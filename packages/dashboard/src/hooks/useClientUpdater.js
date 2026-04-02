@@ -80,7 +80,7 @@ export const useClientUpdater = (onSuccess) => {
           closedDate: dateValue,
           lostReason: data.reason,
           lostReasonDetails: data.details || '',
-          lostAtPhase: CLIENT_STATUS.ACTIVE_ONSITE, // 活動中からの退所
+          lostAtPhase: data.currentStatus || CLIENT_STATUS.ACTIVE_ONSITE, // 活動中からの退所
           updatedAt: serverTimestamp(),
         });
 

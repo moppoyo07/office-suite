@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Box, CircularProgress, Grid, Paper, Typography } from '@mui/material';
-import { collection, getDocs, doc, updateDoc, query, where, addDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../../firebase/index.js";
 import { useClientUpdater } from '../../hooks/useClientUpdater';
 import { useTenant } from '../../context/TenantContext';
+import { CLIENT_STATUS } from '../../constants/clientStatus';
 
 import ClientCard from './ClientCard.jsx';
 import EmploymentInfoModal from './components/EmploymentInfoModal.jsx';
@@ -40,7 +41,7 @@ function ClientOnsitePage() {
 
   useEffect(() => {
     const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
-    const q = query(collection(db, "clients"), ...companyFilter, where("status", "in", ["closed", "closed-lost"]), where("lostAtPhase", "==", "active_onsite"));
+    const q = query(collection(db, "clients"), ...companyFilter, where("status", "==", CLIENT_STATUS.CLOSED), where("lostAtPhase", "==", "active_onsite"));
     const unsubscribe = onSnapshot(q, (snapshot) => { setRetirementCount(snapshot.size); }, (error) => { console.error("退所者数の取得に失敗しました:", error); });
     return () => unsubscribe();
   }, [companyId]);
@@ -77,11 +78,11 @@ function ClientOnsitePage() {
 
   const handleConfirmEmployment = useCallback(async (employmentData) => {
     if (!employmentTargetId || !employmentData) return;
-    await graduateClient(employmentTargetId, employmentData);
+    const target = clients.find(c => c.id === employmentTargetId);
+    await graduateClient(employmentTargetId, { ...employmentData, currentStatus: target?.status });
     setIsEmploymentModalOpen(false);
     // 就職確定の場合のみ計画書入力モーダルを開く
     if (employmentData.type === 'employment') {
-      const target = clients.find(c => c.id === employmentTargetId);
       setPlanTargetClient(target || { id: employmentTargetId });
       setIsPlanModalOpen(true);
     }

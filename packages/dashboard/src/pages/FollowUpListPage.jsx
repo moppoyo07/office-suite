@@ -198,6 +198,7 @@ export default function FollowUpListPage() {
         try {
             const q = query(
                 collection(db, 'clients', client.id, 'activity_logs'),
+                where('companyId', '==', companyId),
                 orderBy('createdAt', 'desc')
             );
             const snap = await getDocs(q);

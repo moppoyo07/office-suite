@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Typography, Button, Paper, Box, Divider, CircularProgress } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
-import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, serverTimestamp, query, where } from "firebase/firestore";
 import { db, auth } from "@/firebase/index.js";
 import { useTenant } from '../../context/TenantContext';
+import { useActivityLog } from '../../hooks/useActivityLog';
+import { CLIENT_STATUS } from '../../constants/clientStatus';
 
 // コンポーネントのインポート
 import ClientCard from './ClientCard.jsx';
@@ -18,8 +20,15 @@ const columns = [
   { id: 'active_onsite', title: '利用中（施設内）', prevStatus: 'pre_contract', nextStatus: null },
 ];
 
+const LOST_REASON_LABELS = {
+  other: 'その他', details_mismatch: '条件不一致', price: '料金・費用',
+  distance: '通所困難', atmosphere: '雰囲気', health: '体調不良',
+  transferred: '他事業所へ', expired: '期間満了', drop_out: '途中退所',
+};
+
 function ClientListPage() {
   const { activeCompanyId: companyId } = useTenant();
+  const { saveLog } = useActivityLog();
 
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,26 +51,42 @@ function ClientListPage() {
     const newStatus = direction === 'next' ? col.nextStatus : col.prevStatus;
     if (!newStatus) return;
     try {
-      await updateDoc(doc(db, "clients", clientId), { status: newStatus, updatedAt: new Date() });
+      await updateDoc(doc(db, "clients", clientId), { status: newStatus, updatedAt: serverTimestamp() });
       fetchClients();
     } catch (error) { console.error("ステータス更新エラー:", error); }
   }, [fetchClients]);
 
   const handleComplete = useCallback((clientId) => { alert(`（将来の実装）クライアントID: ${clientId} を、次のフェーズに移行します。`); }, []);
 
-  const handleOpenLostModal = useCallback((clientId, currentStatus) => {
-    setLostTarget({ id: clientId, status: currentStatus });
+  const handleOpenLostModal = useCallback((clientId, currentStatus, clientName) => {
+    setLostTarget({ id: clientId, status: currentStatus, name: clientName || '' });
     setIsLostModalOpen(true);
   }, []);
 
   const handleConfirmLost = useCallback(async (reason, details) => {
     if (!lostTarget) return;
     try {
-      await updateDoc(doc(db, "clients", lostTarget.id), { status: 'closed', closedType: 'lost', lostAtPhase: lostTarget.status, lostReason: reason, lostReasonDetails: details, updatedAt: new Date() });
+      await updateDoc(doc(db, "clients", lostTarget.id), {
+        status: CLIENT_STATUS.CLOSED,
+        closedType: 'lost',
+        lostAtPhase: lostTarget.status,
+        lostReason: reason,
+        lostReasonDetails: details,
+        updatedAt: serverTimestamp()
+      });
+      const reasonLabel = LOST_REASON_LABELS[reason] || reason;
+      await saveLog(
+        lostTarget.id,
+        {
+          type: 'lost',
+          content: `【ロスト】\n理由: ${reasonLabel}${details ? '\n詳細: ' + details : ''}`,
+        },
+        lostTarget.name || ''
+      );
       fetchClients();
     } catch (error) { console.error("ロスト処理エラー:", error); }
     finally { setIsLostModalOpen(false); setLostTarget(null); }
-  }, [lostTarget, fetchClients]);
+  }, [lostTarget, fetchClients, saveLog]);
 
 
 
@@ -75,7 +100,7 @@ function ClientListPage() {
 
   const lostCounts = useMemo(() => {
     return columns.reduce((acc, column) => {
-      acc[column.id] = clients.filter(c => (c.status === 'closed' || c.status === 'closed-lost') && c.lostAtPhase === column.id).length;
+      acc[column.id] = clients.filter(c => c.status === CLIENT_STATUS.CLOSED && c.lostAtPhase === column.id).length;
       return acc;
     }, {});
   }, [clients]);

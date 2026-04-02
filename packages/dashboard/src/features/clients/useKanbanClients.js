@@ -22,6 +22,12 @@ const TRANSITION_DATE_REQUIRED = {
   [CLIENT_STATUS.PRE_CONTRACT]: { label: '体験終了日', fieldName: 'trialEndDate',   fromLabel: '体験利用',   toLabel: '契約準備中' },
 };
 
+const LOST_REASON_LABELS = {
+  other: 'その他', details_mismatch: '条件不一致', price: '料金・費用',
+  distance: '通所困難', atmosphere: '雰囲気', health: '体調不良',
+  transferred: '他事業所へ', expired: '期間満了', drop_out: '途中退所',
+};
+
 export function useKanbanClients() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,12 +149,12 @@ export function useKanbanClients() {
   }, [fetchClients]);
 
   // --- ロストモーダル ---
-  const handleOpenLostModal = useCallback((clientId, currentStatus) => {
+  const handleOpenLostModal = useCallback((clientId, currentStatus, clientName) => {
     if (!currentStatus) {
       console.error("ロスト処理エラー: 現在のステータスが不明です");
       return;
     }
-    setLostTarget({ id: clientId, status: currentStatus });
+    setLostTarget({ id: clientId, status: currentStatus, name: clientName || '' });
     setIsLostModalOpen(true);
   }, []);
 
@@ -157,11 +163,21 @@ export function useKanbanClients() {
     try {
       await updateDoc(doc(db, "clients", lostTarget.id), {
         status: CLIENT_STATUS.CLOSED,
+        closedType: 'lost',
         lostAtPhase: lostTarget.status,
         lostReason: reason,
         lostReasonDetails: details,
         updatedAt: serverTimestamp(),
       });
+      const reasonLabel = LOST_REASON_LABELS[reason] || reason;
+      await saveLog(
+        lostTarget.id,
+        {
+          type: 'lost',
+          content: `【ロスト】\n理由: ${reasonLabel}${details ? '\n詳細: ' + details : ''}`,
+        },
+        lostTarget.name || ''
+      );
       fetchClients();
     } catch (error) {
       console.error("ロスト処理エラー:", error);
@@ -169,7 +185,7 @@ export function useKanbanClients() {
       setIsLostModalOpen(false);
       setLostTarget(null);
     }
-  }, [lostTarget, fetchClients]);
+  }, [lostTarget, fetchClients, saveLog]);
 
   // --- 集計 ---
   const categorizedClients = useMemo(() => {

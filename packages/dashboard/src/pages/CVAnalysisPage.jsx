@@ -121,7 +121,7 @@ export default function CVAnalysisPage() {
 
         // 問合せ月ベースでactive以外をカウント
         monthlyInquiries.forEach(c => {
-            if (c.status === CLIENT_STATUS.CLOSED || c.status === 'closed-lost') return;
+            if (c.status === CLIENT_STATUS.CLOSED) return;
             switch (c.status) {
                 case CLIENT_STATUS.INQUIRY:
                     statusCounts.inquiry++;

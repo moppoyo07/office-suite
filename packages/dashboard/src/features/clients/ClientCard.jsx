@@ -138,7 +138,7 @@ const ClientCard = ({ client, onUpdateStatus, onComplete, onLost, onRetentionNot
         >
           {/* 上の段 */}
           <Stack direction="row" spacing={0.5}>
-            <IconButton title="失注/離脱処理" size="small" color="error" onClick={() => onLost(client.id, client.status)}>
+            <IconButton title="失注/離脱処理" size="small" color="error" onClick={() => onLost(client.id, client.status, client.name)}>
               <CloseIcon fontSize="inherit" />
             </IconButton>
             {isFollowUpKanban && (

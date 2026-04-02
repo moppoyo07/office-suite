@@ -4,6 +4,7 @@ import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, onS
 import { db } from "../../firebase/index.js";
 import { useClientUpdater } from '../../hooks/useClientUpdater';
 import { useTenant } from '../../context/TenantContext';
+import { CLIENT_STATUS } from '../../constants/clientStatus';
 import ClientCard from './ClientCard.jsx';
 import EmploymentInfoModal from './components/EmploymentInfoModal.jsx';
 import LostReasonModal from './components/LostReasonModal.jsx';
@@ -39,7 +40,7 @@ function ClientRemotePage() {
   useEffect(() => { fetchClients(); }, [fetchClients]);
   useEffect(() => {
     const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
-    const q = query(collection(db, "clients"), ...companyFilter, where("status", "in", ["closed", "closed-lost"]), where("lostAtPhase", "==", "active_remote"));
+    const q = query(collection(db, "clients"), ...companyFilter, where("status", "==", CLIENT_STATUS.CLOSED), where("lostAtPhase", "==", "active_remote"));
     const unsubscribe = onSnapshot(q, (snapshot) => { setRetirementCount(snapshot.size); }, (error) => { console.error("退所者数の取得に失敗しました:", error); });
     return () => unsubscribe();
   }, [companyId]);
@@ -57,7 +58,7 @@ function ClientRemotePage() {
   const handleConfirmLost = useCallback(async (reason, details) => {
     if (!lostTarget) return;
     try {
-      await updateDoc(doc(db, "clients", lostTarget.id), { status: 'closed', closedType: 'lost', lostAtPhase: lostTarget.status, lostReason: reason, lostReasonDetails: details, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, "clients", lostTarget.id), { status: CLIENT_STATUS.CLOSED, closedType: 'lost', lostAtPhase: lostTarget.status, lostReason: reason, lostReasonDetails: details, updatedAt: serverTimestamp() });
       fetchClients();
     }
     catch (error) { console.error("ロスト処理エラー:", error); }
@@ -75,10 +76,10 @@ function ClientRemotePage() {
 
   const handleConfirmEmployment = useCallback(async (employmentData) => {
     if (!employmentTargetId || !employmentData) return;
-    await graduateClient(employmentTargetId, employmentData);
+    const target = clients.find(c => c.id === employmentTargetId);
+    await graduateClient(employmentTargetId, { ...employmentData, currentStatus: target?.status });
     setIsEmploymentModalOpen(false);
     if (employmentData.type === 'employment') {
-      const target = clients.find(c => c.id === employmentTargetId);
       setPlanTargetClient(target || { id: employmentTargetId });
       setIsPlanModalOpen(true);
     }

@@ -41,7 +41,6 @@ export const STATUS_CONFIG = {
   [CLIENT_STATUS.FOLLOW_UP_M6]: { label: '定着支援 6ヶ月', color: 'warning', bg: '#fbe9e7', text: '#d84315' },
   [CLIENT_STATUS.COMPLETED]: { label: '定着完了', color: 'success', bg: '#e8eaf6', text: '#283593' },
   [CLIENT_STATUS.CLOSED]: { label: '利用終了', color: 'error', bg: '#ffebee', text: '#c62828' },
-  [CLIENT_STATUS.CLOSED_LOST]: { label: '利用終了（ロスト）', color: 'error', bg: '#ffebee', text: '#c62828' },
   [CLIENT_STATUS.RETIRED]: { label: '離職', color: 'default', bg: '#efebe9', text: '#5d4037' },
 };
 
