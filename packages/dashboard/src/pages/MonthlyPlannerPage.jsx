@@ -97,30 +97,8 @@ export default function MonthlyPlannerPage() {
     fetchActivityOptions();
   }, []);
 
-  // 利用者を取得
-  useEffect(() => {
-    if (userLoading) return;
-    if (!isPlatform && !companyId) return;
-    const fetchClients = async () => {
-      try {
-        const companyFilter = !isPlatform ? [where('companyId', '==', companyId)] : [];
-        const q = query(
-          collection(db, 'clients'),
-          ...companyFilter,
-          where('status', 'in', ['active_onsite', 'active_remote'])
-        );
-        const snapshot = await getDocs(q);
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
-        setClients(list);
-      } catch (error) {
-        console.error('利用者取得エラー:', error);
-      }
-    };
-    fetchClients();
-  }, [isPlatform, companyId, userLoading]);
-
-  // 予定と実績を取得
+  // 予定・実績・利用者を取得
+  // ※月の途中で卒業・就職になりステータスが変わった利用者も、その月に実績や予定があれば表示する
   useEffect(() => {
     if (userLoading) return;
     if (!isPlatform && !companyId) return;
@@ -181,6 +159,23 @@ export default function MonthlyPlannerPage() {
           }
         });
         setRecords(recordsMap);
+
+        // 利用者一覧を取得（ステータスで絞らない）
+        // 月内に予定 or 実績があった利用者 + 現在アクティブな利用者 を対象とする
+        const clientsQuery = query(collection(db, 'clients'), ...companyFilter);
+        const clientsSnap = await getDocs(clientsQuery);
+        const monthClientIds = new Set([
+          ...Object.keys(plansMap),
+          ...Object.keys(recordsMap),
+        ]);
+        const list = clientsSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(c => {
+            if (monthClientIds.has(c.id)) return true;
+            return c.status === 'active_onsite' || c.status === 'active_remote';
+          });
+        list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+        setClients(list);
       } catch (error) {
         console.error('データ取得エラー:', error);
       } finally {

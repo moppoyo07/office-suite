@@ -38,10 +38,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB まで許可（Rechartsなど大きなライブラリ対応）
-        // 新しいSWが見つかったら即座にアクティベート（iOS PWA対策）
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         skipWaiting: true,
         clientsClaim: true,
+        navigateFallback: 'index.html',
+        navigateFallbackAllowlist: [/^\/(?!api).*/],
       }
     })
   ],

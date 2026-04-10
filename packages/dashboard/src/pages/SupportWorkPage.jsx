@@ -16,6 +16,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import InsightsIcon from '@mui/icons-material/Insights';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
 import { useTheme } from '@mui/material/styles';
 
@@ -443,6 +444,18 @@ const SupportWorkPage = () => {
           unit=""
           description="チェックイン分析"
           color="secondary.main"
+          isLoading={false}
+        />
+
+        {/* 利用料管理 */}
+        <CardWidget
+          to="/accounting/billing"
+          icon={<ReceiptLongIcon />}
+          title="利用料管理"
+          value="💳"
+          unit=""
+          description="金額訂正・入金管理"
+          color="#3b82f6"
           isLoading={false}
         />
 

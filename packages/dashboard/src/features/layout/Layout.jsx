@@ -15,6 +15,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
+import ChatIcon from '@mui/icons-material/Chat';
 import { useAuth } from "../auth/context/AuthContext.jsx";
 import DevModeIndicator from "../../components/DevModeIndicator.jsx";
 import NotificationTicker from "../../components/NotificationTicker.jsx";
@@ -171,6 +172,14 @@ function Layout() {
               </ListItemButton>
             </ListItem>
 
+            {/* LINE紐付け管理 */}
+            <ListItem disablePadding>
+              <ListItemButton component={NavLink} to="/line-link">
+                <ListItemIcon><ChatIcon sx={{ color: '#06c755' }} /></ListItemIcon>
+                <ListItemText primary="LINE管理" />
+              </ListItemButton>
+            </ListItem>
+
             {/* 支援作業（サービス共通、または種別ごとに中身出し分け） */}
             <ListItem disablePadding>
               <ListItemButton component={NavLink} to="/support">
@@ -219,7 +228,6 @@ function Layout() {
                     <ListItemText primary="経理" />
                   </ListItemButton>
                 </ListItem>
-
                 {isPlatformOwner && (
                   <ListItem disablePadding>
                     <ListItemButton component={NavLink} to="/platform">

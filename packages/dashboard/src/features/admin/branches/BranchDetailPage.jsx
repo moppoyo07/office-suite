@@ -32,6 +32,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import GroupsIcon from '@mui/icons-material/Groups';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SavingsIcon from '@mui/icons-material/Savings';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase/index';
 import {
@@ -48,6 +49,7 @@ const SECTION_ICONS = {
     [BRANCH_SECTIONS.CONTACT]: <PhoneIcon />,
     [BRANCH_SECTIONS.WELFARE]: <VolunteerActivismIcon />,
     [BRANCH_SECTIONS.CAPACITY]: <GroupsIcon />,
+    [BRANCH_SECTIONS.BANK]: <SavingsIcon />,
     [BRANCH_SECTIONS.ATTENDANCE]: <SettingsIcon />,
 };
 

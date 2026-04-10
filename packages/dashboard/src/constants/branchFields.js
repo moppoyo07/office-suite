@@ -9,6 +9,7 @@ export const BRANCH_SECTIONS = {
     BASIC: 'basic',
     CONTACT: 'contact',
     WELFARE: 'welfare',
+    BANK: 'bank',
     CAPACITY: 'capacity',
     ATTENDANCE: 'attendance', // 出欠設定
 };
@@ -20,6 +21,7 @@ export const BRANCH_SECTION_CONFIG = {
     [BRANCH_SECTIONS.BASIC]: { label: '基本情報', color: '#10b981', icon: 'Store' },
     [BRANCH_SECTIONS.CONTACT]: { label: '連絡先', color: '#06b6d4', icon: 'Phone' },
     [BRANCH_SECTIONS.WELFARE]: { label: '福祉事業情報', color: '#ec4899', icon: 'VolunteerActivism' },
+    [BRANCH_SECTIONS.BANK]: { label: '銀行口座', color: '#22c55e', icon: 'Savings' },
     [BRANCH_SECTIONS.CAPACITY]: { label: '定員・設備', color: '#f59e0b', icon: 'Groups' },
     [BRANCH_SECTIONS.ATTENDANCE]: { label: '出欠設定', color: '#8b5cf6', icon: 'Settings' },
 };
@@ -158,6 +160,39 @@ export const BRANCH_FIELDS = {
         type: 'number',
         placeholder: '14',
         helperText: '暫定期間終了日の何日前に提出するか（デフォルト: 14日前）',
+    },
+
+    // === 銀行口座 ===
+    bankName: {
+        label: '銀行名',
+        section: BRANCH_SECTIONS.BANK,
+        type: 'text',
+        placeholder: '○○銀行',
+    },
+    bankBranchName: {
+        label: '支店名',
+        section: BRANCH_SECTIONS.BANK,
+        type: 'text',
+        placeholder: '○○支店',
+    },
+    bankAccountType: {
+        label: '口座種別',
+        section: BRANCH_SECTIONS.BANK,
+        type: 'select',
+        options: [
+            { value: 'ordinary', label: '普通' },
+            { value: 'current', label: '当座' },
+        ],
+    },
+    bankAccountNumber: {
+        label: '口座番号',
+        section: BRANCH_SECTIONS.BANK,
+        type: 'text',
+    },
+    bankAccountHolder: {
+        label: '口座名義',
+        section: BRANCH_SECTIONS.BANK,
+        type: 'text',
     },
 
     // === 定員・設備 ===
@@ -332,6 +367,7 @@ export const BRANCH_SECTION_ORDER = [
     BRANCH_SECTIONS.BASIC,
     BRANCH_SECTIONS.CONTACT,
     BRANCH_SECTIONS.WELFARE,
+    BRANCH_SECTIONS.BANK,
     BRANCH_SECTIONS.CAPACITY,
     BRANCH_SECTIONS.ATTENDANCE,
 ];

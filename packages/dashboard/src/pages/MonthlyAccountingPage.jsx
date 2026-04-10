@@ -5,10 +5,11 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Container, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, CircularProgress, Button,
-    FormControl, InputLabel, Select, MenuItem, Stack, Chip
+    FormControl, InputLabel, Select, MenuItem, Stack, Chip, Dialog,
+    DialogTitle, DialogContent, DialogActions, Alert,
 } from '@mui/material';
-import { Print, PeopleAlt } from '@mui/icons-material';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { Print, PeopleAlt, CreditCard, CheckCircle } from '@mui/icons-material';
+import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
@@ -23,6 +24,12 @@ export default function MonthlyAccountingPage() {
     const [clients, setClients] = useState([]);
     const [attendanceCounts, setAttendanceCounts] = useState({});
     const [loading, setLoading] = useState(true);
+
+    // 利用料請求書発行
+    const [billingTargets, setBillingTargets] = useState([]); // usageFee > 0 の施設内利用者
+    const [issuingBilling, setIssuingBilling] = useState(false);
+    const [billingResult, setBillingResult] = useState(null); // { issued, skipped }
+    const [billingDialog, setBillingDialog] = useState(false);
 
     // 月選択
     const currentDate = new Date();
@@ -41,6 +48,28 @@ export default function MonthlyAccountingPage() {
     }
 
     // 利用実績のあるクライアントを取得
+    // 請求対象者は出席に関係なく常に取得（companyIdが変わった時だけ再取得）
+    useEffect(() => {
+        const fetchBillingTargets = async () => {
+            try {
+                const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
+                const snap = await getDocs(
+                    companyFilter.length
+                        ? query(collection(db, 'clients'), ...companyFilter)
+                        : collection(db, 'clients')
+                );
+                const targets = snap.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .filter(c => c.status === CLIENT_STATUS.ACTIVE_ONSITE && Number(c.usageFee) > 0)
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+                setBillingTargets(targets);
+            } catch (e) {
+                console.error('請求対象者取得エラー:', e);
+            }
+        };
+        fetchBillingTargets();
+    }, [companyId]);
+
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -84,10 +113,7 @@ export default function MonthlyAccountingPage() {
                 const clientsData = [];
                 clientsSnap.docs.forEach(doc => {
                     if (activeClientIds.has(doc.id)) {
-                        clientsData.push({
-                            id: doc.id,
-                            ...doc.data()
-                        });
+                        clientsData.push({ id: doc.id, ...doc.data() });
                     }
                 });
 
@@ -112,6 +138,43 @@ export default function MonthlyAccountingPage() {
         setSelectedMonth(month);
     };
 
+    // 利用料請求書発行（billingRecords に未発行の人だけ登録）
+    const handleIssueBilling = async () => {
+        if (!companyId || billingTargets.length === 0) return;
+        setIssuingBilling(true);
+        const yearMonth = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+        try {
+            // 既発行チェック
+            const existingSnap = await getDocs(query(
+                collection(db, 'billingRecords'),
+                where('companyId', '==', companyId),
+                where('yearMonth', '==', yearMonth),
+            ));
+            const issuedClientIds = new Set(existingSnap.docs.map(d => d.data().clientId));
+
+            let issued = 0, skipped = 0;
+            for (const client of billingTargets) {
+                if (issuedClientIds.has(client.id)) { skipped++; continue; }
+                await addDoc(collection(db, 'billingRecords'), {
+                    companyId,
+                    clientId: client.id,
+                    clientName: client.name,
+                    yearMonth,
+                    amount: Number(client.usageFee),
+                    status: 'pending',
+                    issuedAt: Timestamp.now(),
+                    paidAt: null,
+                });
+                issued++;
+            }
+            setBillingResult({ issued, skipped });
+        } catch (e) {
+            console.error('請求書発行エラー:', e);
+        } finally {
+            setIssuingBilling(false);
+        }
+    };
+
     // 個別印刷
     const handlePrintAttendance = (clientId) => {
         navigate(`/support/attendance-print/${clientId}?year=${selectedYear}&month=${selectedMonth}`);
@@ -127,6 +190,7 @@ export default function MonthlyAccountingPage() {
     const remoteClients = clients.filter(c => c.status === CLIENT_STATUS.ACTIVE_REMOTE);
 
     return (
+        <>
         <Container maxWidth="lg">
             <Box sx={{ py: 3 }}>
                 {/* ヒーローヘッダー */}
@@ -239,7 +303,58 @@ export default function MonthlyAccountingPage() {
                         </Box>
                     </Paper>
 
-                    {/* 厚生訓練費請求書カード（対象外の事業所には非表示） */}
+                    {/* 利用料請求書カード */}
+                    <Paper
+                        elevation={4}
+                        sx={{
+                            flex: 1,
+                            p: 3,
+                            borderRadius: 3,
+                            background: 'linear-gradient(145deg, #1e3a5f 0%, #1d4ed8 100%)',
+                            border: '1px solid rgba(59,130,246,0.3)',
+                        }}
+                    >
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h1" sx={{ mb: 2 }}>💳</Typography>
+                            <Typography variant="h5" sx={{ color: 'white', fontWeight: 'bold', mb: 1 }}>
+                                利用料請求書
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 2 }}>
+                                上限月額設定済み {billingTargets.length}名対象
+                            </Typography>
+                            <Stack spacing={1}>
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    startIcon={issuingBilling ? <CircularProgress size={14} color="inherit" /> : <CreditCard />}
+                                    disabled={billingTargets.length === 0 || issuingBilling}
+                                    onClick={() => { setBillingResult(null); setBillingDialog(true); }}
+                                    sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.35)' } }}
+                                >
+                                    請求書発行
+                                </Button>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<Print />}
+                                    onClick={() => navigate(`/monthly/billing-print?year=${selectedYear}&month=${selectedMonth}`)}
+                                    sx={{ borderColor: 'rgba(255,255,255,0.5)', color: 'white', '&:hover': { borderColor: 'white' } }}
+                                >
+                                    一括印刷
+                                </Button>
+                                <Button
+                                    variant="text"
+                                    size="small"
+                                    onClick={() => navigate('/accounting/billing')}
+                                    sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}
+                                >
+                                    消し込み画面へ →
+                                </Button>
+                            </Stack>
+                        </Box>
+                    </Paper>
+
+                {/* 厚生訓練費請求書カード（対象外の事業所には非表示） */}
                     {hasWelfareTraining ? (
                         <Paper
                             elevation={4}
@@ -442,6 +557,78 @@ export default function MonthlyAccountingPage() {
             </Box>
         </Container>
 
-
+        {/* 請求書発行確認ダイアログ */}
+        <Dialog open={billingDialog} onClose={() => setBillingDialog(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>利用料請求書 発行確認</DialogTitle>
+            <DialogContent>
+                {billingResult ? (
+                    <Stack spacing={2} sx={{ pt: 1 }}>
+                        <Alert severity="success" icon={<CheckCircle />}>
+                            <Typography fontWeight="bold">発行完了</Typography>
+                            <Typography variant="body2">
+                                新規発行: {billingResult.issued}件 ／ 既発行スキップ: {billingResult.skipped}件
+                            </Typography>
+                        </Alert>
+                        <Typography variant="body2" color="text.secondary">
+                            一括印刷ボタンから請求書を印刷して利用者に渡してください。
+                        </Typography>
+                    </Stack>
+                ) : (
+                    <Stack spacing={2} sx={{ pt: 1 }}>
+                        {selectedYear === currentDate.getFullYear() && selectedMonth === (currentDate.getMonth() + 1) && (
+                            <Alert severity="warning" sx={{ fontWeight: 'bold' }}>
+                                当月（{selectedYear}年{selectedMonth}月）分の請求書を発行しようとしています。
+                                通常、請求書は翌月以降に発行します。対象月を確認してください。
+                            </Alert>
+                        )}
+                        <Typography>
+                            <strong>{selectedYear}年{selectedMonth}月分</strong> の利用料請求書を発行します。
+                        </Typography>
+                        <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                            <Typography variant="body2" gutterBottom sx={{ color: '#666' }}>対象利用者（施設内・上限月額設定済み）</Typography>
+                            {billingTargets.map(c => (
+                                <Typography key={c.id} variant="body2" sx={{ color: '#222' }}>
+                                    ・{c.name}　¥{Number(c.usageFee).toLocaleString()}
+                                </Typography>
+                            ))}
+                        </Box>
+                        <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
+                            既に発行済みの方はスキップされます。
+                        </Alert>
+                    </Stack>
+                )}
+            </DialogContent>
+            <DialogActions>
+                {billingResult ? (
+                    <>
+                        <Button onClick={() => setBillingDialog(false)}>閉じる</Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<Print />}
+                            onClick={() => {
+                                setBillingDialog(false);
+                                navigate(`/monthly/billing-print?year=${selectedYear}&month=${selectedMonth}`);
+                            }}
+                        >
+                            一括印刷へ
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button onClick={() => setBillingDialog(false)}>キャンセル</Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleIssueBilling}
+                            disabled={issuingBilling}
+                            startIcon={issuingBilling ? <CircularProgress size={16} /> : <CreditCard />}
+                        >
+                            発行する
+                        </Button>
+                    </>
+                )}
+            </DialogActions>
+        </Dialog>
+        </>
     );
 }

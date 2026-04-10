@@ -39,7 +39,11 @@ const ClientCard = ({ client, onUpdateStatus, onComplete, onLost, onRetentionNot
     const interviewDate = client.interviewDate?.toDate  ? format(client.interviewDate.toDate(),  'yyyy/MM/dd') : null;
     const trialDate     = client.trialDate?.toDate      ? format(client.trialDate.toDate(),      'yyyy/MM/dd') : null;
     const trialEndDate  = client.trialEndDate?.toDate   ? format(client.trialEndDate.toDate(),   'yyyy/MM/dd') : null;
-    const startDate     = client.serviceStartDate?.toDate ? client.serviceStartDate.toDate()   : null;
+    const startDate     = client.serviceStartDate?.toDate
+      ? client.serviceStartDate.toDate()
+      : client.serviceStartDate
+        ? new Date(client.serviceStartDate)
+        : null;
 
     let detailText = null;
 

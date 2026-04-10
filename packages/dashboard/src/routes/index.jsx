@@ -21,8 +21,11 @@ import RetentionReportPage from '../pages/RetentionReportPage.jsx';
 import AdminDataMigrationPage from '../pages/AdminDataMigrationPage.jsx';
 import AnnualReportCenterPage from '../pages/AnnualReportCenterPage.jsx';
 import BasicRewardReportPage from '../pages/BasicRewardReportPage.jsx';
+import BillingPage from '../pages/BillingPage.jsx';
+import BillingInvoicePrintPage from '../pages/BillingInvoicePrintPage.jsx';
 import AlertsListPage from '../pages/AlertsListPage.jsx';
 import FollowUpListPage from '../pages/FollowUpListPage.jsx';
+import LineLinkPage from '../pages/LineLinkPage.jsx';
 import RoleSetupPage from '../features/admin/RoleSetupPage.jsx';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
@@ -69,6 +72,8 @@ export const AppRoutes = () => {
           <Route path="monthly" element={<MonthlyAccountingPage />} />
           <Route path="monthly/batch-print" element={<BatchAttendancePrintPage />} />
           <Route path="monthly/welfare-training" element={<WelfareTrainingPage />} />
+          <Route path="monthly/billing-print" element={<BillingInvoicePrintPage />} />
+          <Route path="accounting/billing" element={<BillingPage />} />
           <Route path="retention-support/print" element={<RetentionSupportPrintPage />} />
           <Route path="clients/:clientId/retention-report" element={<RetentionReportPage />} />
           <Route path="clients/:clientId/retention-report/:yearMonth" element={<RetentionReportPage />} />
@@ -77,6 +82,7 @@ export const AppRoutes = () => {
           <Route path="accounting" element={<AccountingPage />} />
           <Route path="alerts" element={<AlertsListPage />} />
           <Route path="follow-up-list" element={<FollowUpListPage />} />
+          <Route path="line-link" element={<LineLinkPage />} />
           {/* 一時的なロール設定ページ（セットアップ完了後に削除） */}
           <Route path="role-setup" element={<RoleSetupPage />} />
           <Route path="admin/data-migration" element={<AdminDataMigrationPage />} />

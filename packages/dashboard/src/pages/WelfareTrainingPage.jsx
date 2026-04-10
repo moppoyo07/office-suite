@@ -137,19 +137,36 @@ export default function WelfareTrainingPage() {
         setError(null);
 
         try {
-            // 利用中の利用者を取得（選択した自治体でフィルタリング）
-            // まず利用中の利用者を全て取得し、クライアント側で自治体フィルタリング
+            // 【重要】ステータスで弾かない。対象月に出席実績があった利用者を対象にする。
+            // 月途中で卒業・就職した利用者も、その月の更生訓練費請求が必要なため。
             const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
-            const q = query(
-                collection(db, 'clients'),
+
+            // 1. 対象月のattendanceRecordsを取得して実績のあったclientIdを集める
+            // ※ status フィルタは複合インデックスを増やさないためメモリ側で実施
+            const monthStart = new Date(year, month - 1, 1);
+            const monthEnd = new Date(year, month, 0, 23, 59, 59);
+            const attendanceQ = query(
+                collection(db, 'attendanceRecords'),
                 ...companyFilter,
-                where('status', 'in', ['active_onsite', 'active_remote'])
+                where('date', '>=', Timestamp.fromDate(monthStart)),
+                where('date', '<=', Timestamp.fromDate(monthEnd)),
             );
+            const attendanceSnap = await getDocs(attendanceQ);
+            const activeClientIds = new Set();
+            attendanceSnap.docs.forEach(d => {
+                const data = d.data();
+                if (data.status !== 'present') return;
+                if (data.clientId) activeClientIds.add(data.clientId);
+            });
+
+            // 2. clientsコレクションを全件取得（ステータス無視）→ 実績があったクライアントのみ抽出
+            const q = query(collection(db, 'clients'), ...companyFilter);
             const snapshot = await getDocs(q);
 
-            // 自治体でフィルタリング（設定されている利用者のみ）
+            // 自治体 + 出席実績 の両方でフィルタリング
             const filteredDocs = snapshot.docs.filter(doc => {
                 const data = doc.data();
+                if (!activeClientIds.has(doc.id)) return false;
                 return data.billingInfo?.municipalityName === municipality;
             });
 

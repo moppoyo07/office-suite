@@ -213,6 +213,13 @@ export const COMPANY_FIELDS = {
     },
 
     // === 福祉事業 ===
+    facilityName: {
+        label: '施設名（事業所名）',
+        section: COMPANY_SECTIONS.WELFARE,
+        type: 'text',
+        placeholder: '例: 就労移行ITスクール広島',
+        helperText: '請求書・帳票に表示される施設名',
+    },
     welfareServiceNumber: {
         label: '事業所指定番号',
         section: COMPANY_SECTIONS.WELFARE,
@@ -284,7 +291,6 @@ export const COMPANY_FIELDS = {
         label: '口座番号',
         section: COMPANY_SECTIONS.BANK,
         type: 'text',
-        sensitive: true,
     },
     bankAccountHolder: {
         label: '口座名義',
