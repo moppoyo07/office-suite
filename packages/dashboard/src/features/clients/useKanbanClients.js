@@ -164,6 +164,7 @@ export function useKanbanClients() {
       await updateDoc(doc(db, "clients", lostTarget.id), {
         status: CLIENT_STATUS.CLOSED,
         closedType: 'lost',
+        closedDate: serverTimestamp(),
         lostAtPhase: lostTarget.status,
         lostReason: reason,
         lostReasonDetails: details,

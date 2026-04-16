@@ -121,9 +121,10 @@ export default function CVAnalysisPage() {
         const reachedActive = cohort.filter(c => c.serviceStartDate || stageIndex(c.status) >= 4).length;
 
         // ロスト: その月にロストした人（closedDateベース）
+        // ※ updatedAtへのフォールバックは誤カウントの元なので使わない
         const lost = activeClients.filter(c =>
             (c.status === CLIENT_STATUS.CLOSED || c.status === 'closed-lost') &&
-            isInMonth(c.closedDate || c.updatedAt, monthStart, monthEnd)
+            isInMonth(c.closedDate, monthStart, monthEnd)
         );
 
         const totalInquiries = cohort.length;
