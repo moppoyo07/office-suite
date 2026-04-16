@@ -1,10 +1,11 @@
 // src/features/layout/Layout.jsx
 
-import { useState, useEffect, useMemo } from "react";
-import { Outlet, NavLink } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import {
   Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Toolbar, Typography, AppBar, Button, CircularProgress
+  Toolbar, Typography, AppBar, Button, CircularProgress,
+  InputBase
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
@@ -15,11 +16,12 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
-import ChatIcon from '@mui/icons-material/Chat';
+import SearchIcon from '@mui/icons-material/Search';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import { useAuth } from "../auth/context/AuthContext.jsx";
 import DevModeIndicator from "../../components/DevModeIndicator.jsx";
 import NotificationTicker from "../../components/NotificationTicker.jsx";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../firebase/index.js";
 import { useCurrentUser } from "../../hooks/useCurrentUser.js";
 import { ROLES, ROLE_METADATA, isPlatformRole, isManagerRole } from "../../constants/roles.js";
@@ -45,10 +47,65 @@ const UserInfoPanel = ({ role, profile }) => {
 
 function Layout() {
   const { logout, currentUser } = useAuth();
-  const { role, profile } = useCurrentUser();
+  const { role, profile, companyId } = useCurrentUser();
   const { isEmulating, emulatingCompany, exitEmulatorMode } = useTenant();
+  const navigate = useNavigate();
   const [branchServices, setBranchServices] = useState([]);
   const [loadingBranch, setLoadingBranch] = useState(false);
+
+  // --- 活動記録クイック検索 ---
+  const [searchText, setSearchText] = useState('');
+  const [allClients, setAllClients] = useState([]);
+  const searchInputRef = useRef(null);
+
+  // クライアント一覧を一度だけ取得
+  useEffect(() => {
+    if (!companyId) return;
+    const fetchClients = async () => {
+      try {
+        const q = query(collection(db, 'clients'), where('companyId', '==', companyId));
+        const snap = await getDocs(q);
+        setAllClients(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error('クライアント取得エラー:', e);
+      }
+    };
+    fetchClients();
+  }, [companyId]);
+
+  // カタカナ→ひらがな変換
+  const toHiragana = useCallback((str) => str.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60)), []);
+
+  // onInput でIME変換中でもリアルタイムに検索テキストを更新
+  const handleSearchInput = useCallback((e) => {
+    setSearchText(e.target.value);
+  }, []);
+
+  const filteredClients = useMemo(() => {
+    if (!searchText) return [];
+    const lower = searchText.toLowerCase();
+    const hira = toHiragana(searchText);
+    return allClients.filter(c =>
+      c.name?.toLowerCase().includes(lower) ||
+      c.nameKana?.includes(hira) ||
+      toHiragana(c.nameKana || '').includes(hira)
+    ).slice(0, 8);
+  }, [searchText, allClients, toHiragana]);
+
+  const handleSelectClient = useCallback((client) => {
+    navigate(`/activity-log/${client.id}`);
+    // ナビゲーション後にクリア
+    setTimeout(() => {
+      setSearchText('');
+      if (searchInputRef.current) searchInputRef.current.value = '';
+    }, 0);
+  }, [navigate]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchText('');
+    if (searchInputRef.current) searchInputRef.current.value = '';
+    searchInputRef.current?.focus();
+  }, []);
 
   // 現在のロールのメタデータを取得
   const meta = ROLE_METADATA[role] || ROLE_METADATA[ROLES.BRANCH_STAFF];
@@ -140,6 +197,37 @@ function Layout() {
       }}>
         <Toolbar sx={{ minHeight: '48px !important' }} />
         <Box sx={{ overflow: 'auto', p: 1 }}>
+          {/* 検索中：結果リスト / 通常：メニュー */}
+          {searchText ? (
+            <List>
+              {filteredClients.length > 0 ? filteredClients.map((c) => (
+                <ListItem key={c.id} disablePadding>
+                  <ListItemButton
+                    onClick={() => handleSelectClient(c)}
+                    sx={{
+                      borderRadius: '8px', mb: 0.3,
+                      transition: 'all 0.15s ease',
+                      '&:hover': { bgcolor: 'rgba(34,211,238,0.12)', pl: 2.5 },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <EditNoteIcon sx={{ color: '#22d3ee', fontSize: '1.1rem', filter: 'drop-shadow(0 0 3px rgba(34,211,238,0.4))' }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={c.name}
+                      secondary={c.nameKana || null}
+                      primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0' }}
+                      secondaryTypographyProps={{ fontSize: '0.65rem', color: 'rgba(148,163,184,0.5)' }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              )) : (
+                <Typography sx={{ px: 2, py: 1, fontSize: '0.8rem', color: 'rgba(148,163,184,0.5)' }}>
+                  該当なし
+                </Typography>
+              )}
+            </List>
+          ) : (
           <List>
             <ListItem disablePadding>
               <ListItemButton component={NavLink} to="/">
@@ -169,14 +257,6 @@ function Layout() {
               <ListItemButton component={NavLink} to="/follow-up-list">
                 <ListItemIcon><PhoneInTalkIcon sx={{ color: '#06b6d4' }} /></ListItemIcon>
                 <ListItemText primary="追客リスト" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* LINE紐付け管理 */}
-            <ListItem disablePadding>
-              <ListItemButton component={NavLink} to="/line-link">
-                <ListItemIcon><ChatIcon sx={{ color: '#06c755' }} /></ListItemIcon>
-                <ListItemText primary="LINE管理" />
               </ListItemButton>
             </ListItem>
 
@@ -247,10 +327,63 @@ function Layout() {
             )}
 
           </List>
+          )}
         </Box>
-        <Box sx={{ marginTop: 'auto', p: 2, borderTop: `1px solid ${meta.color}22` }}>
-          <UserInfoPanel role={role} profile={profile} />
-          <Button variant="contained" color="error" fullWidth startIcon={<PowerSettingsNewIcon />} onClick={logout}>Shutdown</Button>
+        <Box sx={{ marginTop: 'auto', borderTop: `1px solid ${meta.color}22` }}>
+          {/* 活動記録クイック検索 — サイドバー下部 */}
+          <Box sx={{ px: 1.5, pt: 1.5, pb: 1 }}>
+            <Typography
+              sx={{
+                fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase',
+                color: '#22d3ee', mb: 0.5, pl: 0.5,
+                textShadow: '0 0 8px rgba(34,211,238,0.4)',
+              }}
+            >
+              Activity Log
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex', alignItems: 'center', gap: 1,
+                px: 1.5, py: 1,
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(34,211,238,0.05))',
+                border: '1px solid',
+                borderColor: searchText ? '#22d3ee' : 'rgba(6,182,212,0.25)',
+                boxShadow: searchText
+                  ? '0 0 20px rgba(34,211,238,0.25), inset 0 0 12px rgba(34,211,238,0.05)'
+                  : '0 0 6px rgba(6,182,212,0.08)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  borderColor: 'rgba(34,211,238,0.6)',
+                  boxShadow: '0 0 14px rgba(34,211,238,0.2), inset 0 0 8px rgba(34,211,238,0.03)',
+                },
+              }}
+            >
+              <SearchIcon sx={{ color: '#22d3ee', fontSize: '1.2rem', filter: 'drop-shadow(0 0 4px rgba(34,211,238,0.5))' }} />
+              <InputBase
+                inputRef={searchInputRef}
+                placeholder="利用者を検索..."
+                onInput={handleSearchInput}
+                autoComplete="off"
+                sx={{
+                  flex: 1, fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 500,
+                  '& input::placeholder': { color: 'rgba(34,211,238,0.4)', opacity: 1 },
+                }}
+              />
+              {searchText && (
+                <Box
+                  onClick={handleClearSearch}
+                  sx={{ cursor: 'pointer', color: 'rgba(148,163,184,0.5)', fontSize: '0.75rem', '&:hover': { color: '#22d3ee' } }}
+                >
+                  ✕
+                </Box>
+              )}
+            </Box>
+          </Box>
+          <Box sx={{ px: 2, pb: 2 }}>
+            <UserInfoPanel role={role} profile={profile} />
+            <Button variant="contained" color="error" fullWidth startIcon={<PowerSettingsNewIcon />} onClick={logout}>Shutdown</Button>
+          </Box>
         </Box>
       </Drawer>
 

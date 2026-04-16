@@ -1,7 +1,7 @@
 // src/features/clients/ClientDetailPage.jsx
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase/index.js";
 import { useAuth } from '../auth/context/AuthContext.jsx';
@@ -40,6 +40,7 @@ const detailMenu = [
 function ClientDetailPage() {
   const { clientId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentUser } = useAuth();
 
   const { saveLog, isSaving: isSavingLog } = useActivityLog();
@@ -51,6 +52,20 @@ function ClientDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(null);
   const [openLogModal, setOpenLogModal] = useState(false);
+  const [logInitialType, setLogInitialType] = useState(null);
+
+  // URL ?newLog=inquiry|tour|trial があれば活動記録ダイアログを自動起動
+  useEffect(() => {
+    const newLog = searchParams.get('newLog');
+    if (newLog && ['inquiry', 'tour', 'trial'].includes(newLog)) {
+      setLogInitialType(newLog);
+      setOpenLogModal(true);
+      // 一度開いたらクエリパラメータを削除（リロードで再発動しないため）
+      const next = new URLSearchParams(searchParams);
+      next.delete('newLog');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchClientData = useCallback(async () => {
     if (!clientId) { setLoading(false); return; }
@@ -100,10 +115,16 @@ function ClientDetailPage() {
     const result = await saveLog(clientId, logData, clientData?.name || '');
     if (result && result.success) {
       setOpenLogModal(false);
+      setLogInitialType(null);
     } else {
       alert("保存できませんでした: " + (result?.error || "不明なエラー"));
     }
     return result;
+  };
+
+  const handleCloseLogModal = () => {
+    setOpenLogModal(false);
+    setLogInitialType(null);
   };
 
   if (loading) {
@@ -179,13 +200,14 @@ function ClientDetailPage() {
               <BasicInfoSection
                 isEditing={isEditing}
                 data={currentData}
+                clientId={clientId}
                 handleChange={handleEditChange}
                 handleSave={handleSave}
                 handleCancelEdit={handleCancelEdit}
                 setEditedData={setEditData}
               />
             )}
-            {selectedMenu === 'activity' && (<ActivityLogList clientId={clientId} />)}
+            {selectedMenu === 'activity' && (<ActivityLogList clientId={clientId} clientData={clientData} />)}
             {selectedMenu === 'welfareContract' && (
               <WelfareContractSection isEditing={isEditing} data={currentData} handleChange={handleEditChange} handleSave={handleSave} handleCancelEdit={handleCancelEdit} />
             )}
@@ -212,13 +234,14 @@ function ClientDetailPage() {
       </Paper>
 
       {/* 活動記録モーダル */}
-      <Dialog open={openLogModal} onClose={() => setOpenLogModal(false)} fullWidth maxWidth="md">
+      <Dialog open={openLogModal} onClose={handleCloseLogModal} fullWidth maxWidth="md">
         <DialogTitle>活動記録の追加</DialogTitle>
         <DialogContent sx={{ pt: '16px !important' }}>
           <ActivityLogForm
             onSubmit={handleSaveLog}
-            onCancel={() => setOpenLogModal(false)}
+            onCancel={handleCloseLogModal}
             isSaving={isSavingLog}
+            initialType={logInitialType}
           />
         </DialogContent>
       </Dialog>

@@ -13,6 +13,7 @@ import CVAnalysisPage from '../pages/CVAnalysisPage.jsx';
 import AttendanceRecordPrintPage from '../pages/AttendanceRecordPrintPage.jsx';
 import MonthlyCheckInSummaryPage from '../pages/MonthlyCheckInSummaryPage.jsx';
 import ReflectionLogPage from '../pages/ReflectionLogPage.jsx';
+import LineLinkPage from '../pages/LineLinkPage.jsx';
 
 const SupportRoutes = () => {
   const { currentUser } = useAuth();
@@ -40,6 +41,7 @@ const SupportRoutes = () => {
       <Route path="attendance-print/:clientId" element={<AttendanceRecordPrintPage />} />
       <Route path="monthly-checkin-summary" element={<MonthlyCheckInSummaryPage />} />
       <Route path="reflection-log" element={<ReflectionLogPage />} />
+      <Route path="line-link" element={<LineLinkPage />} />
 
 
       {/* 

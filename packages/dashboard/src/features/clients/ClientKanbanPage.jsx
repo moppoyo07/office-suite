@@ -16,7 +16,6 @@ function ClientKanbanPage() {
     loading,
     kanbanColumns,
     categorizedClients,
-    lostCounts,
     totalInquiriesThisMonth, // ★ 今月の総問合せ数
     handleUpdateStatus,
     handleOpenLostModal,
@@ -76,8 +75,6 @@ function ClientKanbanPage() {
         alignItems: 'stretch'
       }}>
         {kanbanColumns.map(column => {
-          const lostCount = lostCounts[column.id] || 0; // ロスト数を取得
-
           return (
             <Box key={column.id} sx={{
               flex: '1 0 320px', // ★変更: 画面幅に合わせて伸びるように変更。ベースも広く(320px)
@@ -86,20 +83,18 @@ function ClientKanbanPage() {
               flexDirection: 'column',
               height: '100%' // 高さを親に合わせる
             }}>
-              {/* --- 上段: 利用者リスト (スクロール領域) --- */}
+              {/* --- 利用者リスト (スクロール領域) --- */}
               <Paper sx={{
                 width: '100%',
                 display: 'flex',
                 flexDirection: 'column',
                 flexGrow: 1,
-                minHeight: 0, // 重要: flexアイテムの縮小を許可
-                //overflow: 'hidden', // Paper自体のスクロールはさせない
-                p: 0, // Paddingは内部で制御
-                backgroundColor: 'transparent', // Cards自体がPaperならtransparentでもいいが、ここでは統一感のため変更してもよい
+                minHeight: 0,
+                p: 0,
+                backgroundColor: 'transparent',
                 border: '1px solid #06b6d4',
                 boxShadow: '0 0 4px #06b6d4',
-                borderRadius: '8px 8px 0 0', // 下を平らに
-                borderBottom: 'none',
+                borderRadius: '8px',
               }}>
 
                 <Box sx={{ flexShrink: 0, p: 2, pb: 1, borderBottom: '1px solid rgba(6, 182, 212, 0.3)' }}>
@@ -110,10 +105,8 @@ function ClientKanbanPage() {
 
                 <Box sx={{
                   flexGrow: 1,
-                  overflowY: 'auto', // ここだけスクロール！！
+                  overflowY: 'auto',
                   p: 1,
-                  //pr: 1, 
-                  //mr: -1 
                 }}>
                   {(categorizedClients[column.id] || []).map(client => (
                     <ClientCard
@@ -126,26 +119,6 @@ function ClientKanbanPage() {
                     />
                   ))}
                 </Box>
-              </Paper>
-
-              {/* --- 下段: ロストカウンター (統合版) --- */}
-              <Paper sx={{
-                p: 1,
-                width: '100%',
-                flexShrink: 0, // 縮まない
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                border: '1px solid #06b6d4',
-                borderTop: '1px dashed rgba(6, 182, 212, 0.5)',
-                borderRadius: '0 0 8px 8px', // 上を平らに
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.4)',
-              }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>Lost / 他決</Typography>
-                <Typography variant="subtitle2" sx={{ color: '#ef4444', fontWeight: 'bold', fontSize: '1rem' }}>
-                  {lostCount} <span style={{ fontSize: '0.7rem', color: 'grey', fontWeight: 'normal' }}>人</span>
-                </Typography>
               </Paper>
 
             </Box>

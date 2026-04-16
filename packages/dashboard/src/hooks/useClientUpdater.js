@@ -121,6 +121,7 @@ export const useClientUpdater = (onSuccess) => {
       await updateDoc(clientRef, {
         status: CLIENT_STATUS.CLOSED,
         closedType: 'lost',
+        closedDate: serverTimestamp(),
         lostAtPhase: lostInfo.currentStatus,
         lostReason: lostInfo.reason,
         lostReasonDetails: lostInfo.details || '',

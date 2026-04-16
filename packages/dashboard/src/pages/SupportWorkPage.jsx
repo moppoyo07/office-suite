@@ -128,11 +128,12 @@ const SupportWorkPage = () => {
         );
         const plansSnap = await getDocs(plansQuery);
 
-        // 予定がある利用者をカウント（plannedDatesが1つ以上あるもの）
+        // 予定がある利用者をカウント（アクティブ利用者のみ）
+        const activeClientIds = new Set(clientsSnap.docs.map(d => d.id));
         const scheduledClientIds = new Set();
         plansSnap.docs.forEach(doc => {
           const data = doc.data();
-          if (data.plannedDates && data.plannedDates.length > 0) {
+          if (data.plannedDates && data.plannedDates.length > 0 && activeClientIds.has(data.clientId)) {
             scheduledClientIds.add(data.clientId);
           }
         });
@@ -456,6 +457,18 @@ const SupportWorkPage = () => {
           unit=""
           description="金額訂正・入金管理"
           color="#3b82f6"
+          isLoading={false}
+        />
+
+        {/* LINE管理 */}
+        <CardWidget
+          to="/support/line-link"
+          icon={<ChatBubbleOutlineIcon />}
+          title="LINE管理"
+          value="💬"
+          unit=""
+          description="LINE紐付け・メッセージ管理"
+          color="#06c755"
           isLoading={false}
         />
 

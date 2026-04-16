@@ -20,6 +20,7 @@ export const CLIENT_STATUS = {
   COMPLETED: 'completed',       // 定着完了
   CLOSED: 'closed',             // 利用終了（全終了はここに統一。closedTypeで区別）
   RETIRED: 'retired',           // 離職
+  FAMILY: 'family',             // 関係者（家族等）— CRM・追客・CV対象外
 };
 
 // 表示用ラベルと色の設定
@@ -42,6 +43,7 @@ export const STATUS_CONFIG = {
   [CLIENT_STATUS.COMPLETED]: { label: '定着完了', color: 'success', bg: '#e8eaf6', text: '#283593' },
   [CLIENT_STATUS.CLOSED]: { label: '利用終了', color: 'error', bg: '#ffebee', text: '#c62828' },
   [CLIENT_STATUS.RETIRED]: { label: '離職', color: 'default', bg: '#efebe9', text: '#5d4037' },
+  [CLIENT_STATUS.FAMILY]: { label: '関係者', color: 'default', bg: '#e0f7fa', text: '#00838f' },
 };
 
 // 終了理由（ロスト理由）の詳細定義

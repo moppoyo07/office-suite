@@ -29,7 +29,7 @@ const TRANSPORT_TYPES = [
   { value: 'walk', label: '徒歩/自転車' },
 ];
 
-const BasicInfoSection = ({ isEditing, data, handleChange, handleSave, handleCancelEdit, setEditedData }) => {
+const BasicInfoSection = ({ isEditing, data, clientId, handleChange, handleSave, handleCancelEdit, setEditedData }) => {
 
   // --- 経路情報の操作ハンドラ (配列操作用) ---
 
@@ -74,9 +74,21 @@ const BasicInfoSection = ({ isEditing, data, handleChange, handleSave, handleCan
     <Stack spacing={4}>
       {/* 基本情報 */}
       <Box>
-        <Typography variant="subtitle1" gutterBottom sx={{ borderLeft: '4px solid #1976d2', pl: 1, mb: 2 }}>
-          基本情報
-        </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ borderLeft: '4px solid #1976d2', pl: 1 }}>
+            基本情報
+          </Typography>
+          {clientId && (
+            <Typography
+              variant="caption"
+              sx={{ color: 'rgba(148,163,184,0.5)', fontSize: '0.65rem', fontFamily: 'monospace', cursor: 'pointer', '&:hover': { color: 'rgba(148,163,184,0.8)' } }}
+              onClick={() => { navigator.clipboard.writeText(clientId); }}
+              title="クリックでコピー"
+            >
+              ID: {clientId}
+            </Typography>
+          )}
+        </Stack>
         <Grid container spacing={2} rowSpacing={2.5}>
           {/* 1行目: 氏名・フリガナ・生年月日・性別・血液型 */}
           <Grid size={{ xs: 6, sm: 3 }}>

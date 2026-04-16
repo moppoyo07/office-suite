@@ -101,6 +101,11 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
         </DisplayRow>
         <DisplayRow>
           <DisplayItem label="請求先自治体" value={billingInfo.municipalityName || '未設定'} sm={4} />
+          <DisplayItem
+            label="更生訓練費の請求事業所"
+            value={data?.welfareTrainingByOther ? '他事業所で請求（訓練費なし・交通費のみ）' : '自事業所で請求'}
+            sm={8}
+          />
         </DisplayRow>
 
       </Stack>
@@ -196,6 +201,25 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
             {municipalities.map(m => (
               <MenuItem key={m.id} value={m.billingName}>{m.name}</MenuItem>
             ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid size={{ xs: 12, sm: 8 }}>
+        <FormControl size="small" fullWidth sx={{ mt: 1 }}>
+          <InputLabel>更生訓練費の請求事業所</InputLabel>
+          <Select
+            label="更生訓練費の請求事業所"
+            value={data?.welfareTrainingByOther ? 'other' : 'self'}
+            onChange={(e) => handleChange({
+              target: {
+                name: 'welfareTrainingByOther',
+                value: e.target.value === 'other'
+              }
+            })}
+          >
+            <MenuItem value="self">自事業所で請求</MenuItem>
+            <MenuItem value="other">他事業所で請求（訓練費なし・交通費のみ）</MenuItem>
           </Select>
         </FormControl>
       </Grid>

@@ -126,11 +126,20 @@ export const AllClientsListPage = () => {
   const filteredClients = useMemo(() => {
     if (!searchText) return clients;
     const lowerText = searchText.toLowerCase();
+    // 電話番号検索用: ハイフン・空白・括弧を除去して数字のみで比較
+    const normalizePhone = (s) => String(s || '').replace(/[\s\-－ー()（）]/g, '');
+    const phoneQuery = normalizePhone(searchText);
+    const isPhoneQuery = /^\d+$/.test(phoneQuery) && phoneQuery.length >= 2;
+
     return clients.filter(client => {
       const matchesName = client.name?.toLowerCase().includes(lowerText);
       const matchesKana = client.nameKana?.includes(lowerText);
       const matchesReason = client.lostReasonDetails?.toLowerCase().includes(lowerText);
-      return matchesName || matchesKana || matchesReason;
+      const matchesPhone = isPhoneQuery && (
+        normalizePhone(client.phone).includes(phoneQuery) ||
+        normalizePhone(client.mobilePhone).includes(phoneQuery)
+      );
+      return matchesName || matchesKana || matchesReason || matchesPhone;
     });
   }, [clients, searchText]);
 
@@ -256,7 +265,7 @@ export const AllClientsListPage = () => {
 
           <TextField
             size="small"
-            placeholder="氏名・理由で検索..."
+            placeholder="氏名・電話番号・理由で検索..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             InputProps={{

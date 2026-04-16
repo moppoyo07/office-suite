@@ -83,85 +83,66 @@ export default function CVAnalysisPage() {
         fetchClients();
     }, [companyId]);
 
-    // 選択月のデータをフィルタリング
+    // 日付ヘルパー
+    const toDate = (v) => {
+        if (!v) return null;
+        if (v.toDate) return v.toDate();
+        if (v.seconds) return new Date(v.seconds * 1000);
+        const d = new Date(v);
+        return isNaN(d) ? null : d;
+    };
+    const isInMonth = (v, start, end) => {
+        const d = toDate(v);
+        return d && d >= start && d <= end;
+    };
+
+    // 選択月のデータをフィルタリング（累積ファネル方式）
     const { monthlyStats, lostClients } = useMemo(() => {
         const monthStart = startOfMonth(selectedMonth);
         const monthEnd = endOfMonth(selectedMonth);
 
-        // その月に問合せが入った人（createdAtベース）
-        const monthlyInquiries = clients.filter(c => {
-            if (!c.createdAt) return false;
-            const createdDate = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
-            return createdDate >= monthStart && createdDate <= monthEnd;
-        });
+        // 関係者を除外
+        const activeClients = clients.filter(c => c.status !== 'family');
 
-        // その月に利用開始した人（serviceStartDateベース）
-        const monthlyActiveStarts = clients.filter(c => {
-            if (!c.serviceStartDate) return false;
-            const startDate = c.serviceStartDate.toDate ? c.serviceStartDate.toDate() : new Date(c.serviceStartDate);
-            return startDate >= monthStart && startDate <= monthEnd;
-        });
+        // その月に問合せが入った人（createdAtベース）＝ コホート
+        const cohort = activeClients.filter(c => isInMonth(c.createdAt, monthStart, monthEnd));
 
-        // ロストしたクライアントを抽出（問合せ月ベース）
-        const lost = monthlyInquiries.filter(c =>
-            c.status === CLIENT_STATUS.CLOSED || c.status === 'closed-lost'
-        );
-
-        // 現在のステータスごとにカウント（問合せ月ベース、ただしactiveだけ利用開始月ベース）
-        const statusCounts = {
-            inquiry: 0,
-            interview: 0,
-            trial: 0,
-            preContract: 0,
-            active: monthlyActiveStarts.length, // ★ 利用開始月ベースに変更
-            followUp: 0,
-            completed: 0,
-            lost: lost.length,
+        // 累積ファネル: その月の問合せ者のうち、各マイルストーンに到達した人数
+        // 日付フィールドがあれば到達済み、なくても現在ステータスが先なら到達済み
+        const STAGE_ORDER = ['inquiry', 'interview', 'trial', 'pre_contract', 'active_onsite', 'active_remote'];
+        const stageIndex = (s) => {
+            const i = STAGE_ORDER.indexOf(s);
+            return i >= 0 ? i : (s?.startsWith('follow') || s === 'completed' || s === 'graduated' || s === 'expired_graduation') ? 99 : -1;
         };
 
-        // 問合せ月ベースでactive以外をカウント
-        monthlyInquiries.forEach(c => {
-            if (c.status === CLIENT_STATUS.CLOSED) return;
-            switch (c.status) {
-                case CLIENT_STATUS.INQUIRY:
-                    statusCounts.inquiry++;
-                    break;
-                case CLIENT_STATUS.INTERVIEW:
-                    statusCounts.interview++;
-                    break;
-                case CLIENT_STATUS.TRIAL:
-                    statusCounts.trial++;
-                    break;
-                case CLIENT_STATUS.PRE_CONTRACT:
-                    statusCounts.preContract++;
-                    break;
-                // activeはserviceStartDateで別途カウントしているのでここではスキップ
-                case CLIENT_STATUS.ACTIVE_ONSITE:
-                case CLIENT_STATUS.ACTIVE_REMOTE:
-                    break;
-                default:
-                    if (c.status?.startsWith('follow-up')) {
-                        statusCounts.followUp++;
-                    } else if (c.status === CLIENT_STATUS.COMPLETED) {
-                        statusCounts.completed++;
-                    }
-            }
-        });
+        const reachedInterview = cohort.filter(c => c.interviewDate || stageIndex(c.status) >= 1).length;
+        const reachedTrial = cohort.filter(c => c.trialStartDate || stageIndex(c.status) >= 2).length;
+        const reachedContract = cohort.filter(c => c.contractDate || stageIndex(c.status) >= 3).length;
+        const reachedActive = cohort.filter(c => c.serviceStartDate || stageIndex(c.status) >= 4).length;
 
-        // CV率を計算
-        const totalInquiries = monthlyInquiries.length;
-        const progressed = statusCounts.interview + statusCounts.trial + statusCounts.preContract;
+        // ロスト: その月にロストした人（closedDateベース）
+        const lost = activeClients.filter(c =>
+            (c.status === CLIENT_STATUS.CLOSED || c.status === 'closed-lost') &&
+            isInMonth(c.closedDate || c.updatedAt, monthStart, monthEnd)
+        );
+
+        const totalInquiries = cohort.length;
 
         return {
             monthlyStats: {
                 totalInquiries,
-                activeCount: statusCounts.active, // 利用開始数（別カウント）
-                counts: statusCounts,
+                counts: {
+                    interview: reachedInterview,
+                    trial: reachedTrial,
+                    preContract: reachedContract,
+                    active: reachedActive,
+                    lost: lost.length,
+                },
                 cvRates: {
-                    interview: totalInquiries > 0 ? Math.round(progressed / totalInquiries * 100) : 0,
-                    trial: totalInquiries > 0 ? Math.round((statusCounts.trial + statusCounts.preContract) / totalInquiries * 100) : 0,
-                    preContract: totalInquiries > 0 ? Math.round(statusCounts.preContract / totalInquiries * 100) : 0,
-                    active: 0, // 利用開始率は問合せ数に対してではなく別指標
+                    interview: totalInquiries > 0 ? Math.round(reachedInterview / totalInquiries * 100) : 0,
+                    trial: totalInquiries > 0 ? Math.round(reachedTrial / totalInquiries * 100) : 0,
+                    preContract: totalInquiries > 0 ? Math.round(reachedContract / totalInquiries * 100) : 0,
+                    active: totalInquiries > 0 ? Math.round(reachedActive / totalInquiries * 100) : 0,
                 },
             },
             lostClients: lost,
@@ -175,53 +156,33 @@ export default function CVAnalysisPage() {
         }
     };
 
-    // 年間推移データを計算（過去12ヶ月）
+    // 年間推移データを計算（過去12ヶ月・累積ファネル方式）
     const yearlyStats = useMemo(() => {
         const stats = [];
         const now = new Date();
+        const activeClients = clients.filter(c => c.status !== 'family');
+
+        const STAGE_ORDER = ['inquiry', 'interview', 'trial', 'pre_contract', 'active_onsite', 'active_remote'];
+        const stageIdx = (s) => {
+            const i = STAGE_ORDER.indexOf(s);
+            return i >= 0 ? i : (s?.startsWith('follow') || s === 'completed' || s === 'graduated' || s === 'expired_graduation') ? 99 : -1;
+        };
 
         for (let i = 11; i >= 0; i--) {
             const targetMonth = subMonths(now, i);
             const monthStart = startOfMonth(targetMonth);
             const monthEnd = endOfMonth(targetMonth);
 
-            // その月の問合せ数（createdAtベース）
-            const inquiryCount = clients.filter(c => {
-                if (!c.createdAt) return false;
-                const createdDate = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
-                return createdDate >= monthStart && createdDate <= monthEnd;
-            }).length;
-
-            // その月に見学段階にいた人（問合せ月ベースで現在interviewステータスの人）
-            const interviewCount = clients.filter(c => {
-                if (!c.createdAt) return false;
-                const createdDate = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
-                if (createdDate < monthStart || createdDate > monthEnd) return false;
-                return c.status === CLIENT_STATUS.INTERVIEW;
-            }).length;
-
-            // その月に体験段階にいた人
-            const trialCount = clients.filter(c => {
-                if (!c.createdAt) return false;
-                const createdDate = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
-                if (createdDate < monthStart || createdDate > monthEnd) return false;
-                return c.status === CLIENT_STATUS.TRIAL;
-            }).length;
-
-            // その月に利用開始した人（serviceStartDateベース）
-            const activeCount = clients.filter(c => {
-                if (!c.serviceStartDate) return false;
-                const startDate = c.serviceStartDate.toDate ? c.serviceStartDate.toDate() : new Date(c.serviceStartDate);
-                return startDate >= monthStart && startDate <= monthEnd;
-            }).length;
+            // その月の問合せコホート
+            const cohort = activeClients.filter(c => isInMonth(c.createdAt, monthStart, monthEnd));
 
             stats.push({
                 month: format(targetMonth, 'M月', { locale: ja }),
                 fullMonth: format(targetMonth, 'yyyy年M月', { locale: ja }),
-                inquiry: inquiryCount,
-                interview: interviewCount,
-                trial: trialCount,
-                active: activeCount,
+                inquiry: cohort.length,
+                interview: cohort.filter(c => c.interviewDate || stageIdx(c.status) >= 1).length,
+                trial: cohort.filter(c => c.trialStartDate || stageIdx(c.status) >= 2).length,
+                active: cohort.filter(c => c.serviceStartDate || stageIdx(c.status) >= 4).length,
             });
         }
 
@@ -293,48 +254,33 @@ export default function CVAnalysisPage() {
                             問合せ数: {monthlyStats.totalInquiries}件
                         </Typography>
 
-                        {/* ファネルバー（問合せ〜準備まで） */}
+                        {/* ファネルバー（累積方式） */}
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
                             <FunnelBar label="問合せ" count={monthlyStats.totalInquiries} rate={100} color="#06b6d4" />
                             <FunnelBar
-                                label="見学以降"
-                                count={monthlyStats.counts.interview + monthlyStats.counts.trial + monthlyStats.counts.preContract}
+                                label="見学到達"
+                                count={monthlyStats.counts.interview}
                                 rate={monthlyStats.cvRates.interview}
                                 color="#3b82f6"
                             />
                             <FunnelBar
-                                label="体験以降"
-                                count={monthlyStats.counts.trial + monthlyStats.counts.preContract}
+                                label="体験到達"
+                                count={monthlyStats.counts.trial}
                                 rate={monthlyStats.cvRates.trial}
                                 color="#8b5cf6"
                             />
                             <FunnelBar
-                                label="準備中"
+                                label="契約到達"
                                 count={monthlyStats.counts.preContract}
                                 rate={monthlyStats.cvRates.preContract}
                                 color="#f59e0b"
                             />
-                        </Box>
-
-                        {/* 利用開始（別カウント） */}
-                        <Box sx={{
-                            p: 2,
-                            bgcolor: 'rgba(16, 185, 129, 0.1)',
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                            borderRadius: 2,
-                        }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body1" sx={{ color: '#10b981', fontWeight: 'bold' }}>
-                                    🎉 利用開始
-                                </Typography>
-                                <Typography variant="h5" sx={{ color: '#10b981', fontWeight: 'bold' }}>
-                                    {monthlyStats.counts.active}
-                                    <span style={{ fontSize: '0.9rem', marginLeft: 4 }}>件</span>
-                                </Typography>
-                            </Box>
-                            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                                ※ この月に利用を開始した人数（問合せ月とは別カウント）
-                            </Typography>
+                            <FunnelBar
+                                label="利用開始"
+                                count={monthlyStats.counts.active}
+                                rate={monthlyStats.cvRates.active}
+                                color="#10b981"
+                            />
                         </Box>
                     </Paper>
                 </Grid>

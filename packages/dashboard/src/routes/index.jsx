@@ -25,7 +25,7 @@ import BillingPage from '../pages/BillingPage.jsx';
 import BillingInvoicePrintPage from '../pages/BillingInvoicePrintPage.jsx';
 import AlertsListPage from '../pages/AlertsListPage.jsx';
 import FollowUpListPage from '../pages/FollowUpListPage.jsx';
-import LineLinkPage from '../pages/LineLinkPage.jsx';
+import ActivityLogPage from '../pages/ActivityLogPage.jsx';
 import RoleSetupPage from '../features/admin/RoleSetupPage.jsx';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
@@ -82,7 +82,7 @@ export const AppRoutes = () => {
           <Route path="accounting" element={<AccountingPage />} />
           <Route path="alerts" element={<AlertsListPage />} />
           <Route path="follow-up-list" element={<FollowUpListPage />} />
-          <Route path="line-link" element={<LineLinkPage />} />
+          <Route path="activity-log/:clientId" element={<ActivityLogPage />} />
           {/* 一時的なロール設定ページ（セットアップ完了後に削除） */}
           <Route path="role-setup" element={<RoleSetupPage />} />
           <Route path="admin/data-migration" element={<AdminDataMigrationPage />} />

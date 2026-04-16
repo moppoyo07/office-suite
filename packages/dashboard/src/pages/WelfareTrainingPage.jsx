@@ -7,7 +7,7 @@ import {
     Box, Container, Typography, Paper, TextField, Button,
     Table, TableBody, TableCell, TableHead, TableRow,
     FormControl, InputLabel, Select, MenuItem, Stack,
-    CircularProgress, Alert
+    CircularProgress, Alert, Chip
 } from '@mui/material';
 import { Print, Save, Refresh, People, School, DirectionsBus, TrendingUp } from '@mui/icons-material';
 import { getTemplate, getConfig } from '../templates';
@@ -217,17 +217,22 @@ export default function WelfareTrainingPage() {
                 // ユーザー例では「単価420」があるので日額がある前提だが、定期のみの場合は単価なしか？
                 // とりあえず日額がある場合はそれをUnit、ない場合はnullとする（定期代のみなら金額だけでよい）
 
+                // 他事業所で更生訓練費を請求しているケース
+                // 訓練費・訓練日数は0にして、交通費のみ請求する
+                const byOther = !!client.welfareTrainingByOther;
+
                 const clientRow = {
                     id: client.id,
                     name: client.name,
-                    trainDays: attendanceData.totalDays,      // 訓練日数
+                    trainDays: byOther ? 0 : attendanceData.totalDays, // 訓練日数（他事業所請求なら0）
                     trainAmount: 0, // 後で計算
                     commuteDays: attendanceData.commuteDays,  // 通所日数
                     onsiteDays: attendanceData.onsiteDays,    // 出席日数（通所）
                     remoteDays: attendanceData.remoteDays,    // 在宅日数
                     commuteUnit: dailyUnit > 0 ? dailyUnit : null, // 単価は日額分のみ
                     commuteAmount: commuteAmount, // 金額は合計
-                    transportNote: buildTransportNote(client, attendanceData, routes, false) // Noteは全ルート混在で作成
+                    transportNote: buildTransportNote(client, attendanceData, routes, false), // Noteは全ルート混在で作成
+                    welfareTrainingByOther: byOther, // UI表示用
                 };
 
                 clientData.push(clientRow);
@@ -580,9 +585,20 @@ export default function WelfareTrainingPage() {
                                 }}
                             >
                                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1a1a1a' }}>
-                                        {client.name}
-                                    </Typography>
+                                    <Stack direction="row" alignItems="center" spacing={0.75}>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1a1a1a' }}>
+                                            {client.name}
+                                        </Typography>
+                                        {client.welfareTrainingByOther && (
+                                            <Chip
+                                                label="他事業所請求"
+                                                size="small"
+                                                color="warning"
+                                                variant="outlined"
+                                                sx={{ height: 18, fontSize: '10px' }}
+                                            />
+                                        )}
+                                    </Stack>
                                     <Typography variant="body2" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
                                         ¥{((client.trainAmount || 0) + (client.commuteAmount || 0)).toLocaleString()}
                                     </Typography>

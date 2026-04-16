@@ -196,35 +196,22 @@ export function useKanbanClients() {
     return data;
   }, [clients]);
 
-  const { lostCounts, totalInquiriesThisMonth } = useMemo(() => {
+  const totalInquiriesThisMonth = useMemo(() => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    const thisMonthClients = clients.filter(c => {
+    return clients.filter(c => {
       if (!c.createdAt) return false;
       const createdDate = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
       return createdDate >= monthStart && createdDate <= monthEnd;
-    });
-
-    const totalInquiries = thisMonthClients.length;
-
-    const counts = kanbanColumns.reduce((acc, column) => {
-      acc[column.id] = thisMonthClients.filter(c =>
-        c.status === CLIENT_STATUS.CLOSED &&
-        c.lostAtPhase === column.id
-      ).length;
-      return acc;
-    }, {});
-
-    return { lostCounts: counts, totalInquiriesThisMonth: totalInquiries };
+    }).length;
   }, [clients]);
 
   return {
     loading,
     kanbanColumns,
     categorizedClients,
-    lostCounts,
     totalInquiriesThisMonth,
     handleUpdateStatus,
     handleOpenLostModal,
