@@ -9,7 +9,8 @@ import HomeIcon from '@mui/icons-material/Home';
 import BusinessIcon from '@mui/icons-material/Business';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { CHARGE_FIELD_MAP } from '../constants/chargeFields';
+import { useChargeMaster } from '../hooks/useChargeMaster';
+import { REMOTE_CHARGE_KEY } from '../constants/chargeMaster';
 
 const DailyCheckinPage = () => {
   const { currentUser } = useAuth();
@@ -20,7 +21,13 @@ const DailyCheckinPage = () => {
   const [records, setRecords] = useState(new Map());
   const [healthData, setHealthData] = useState(new Map());
   const [serviceCharges, setServiceCharges] = useState(new Map()); // 加算状態
-  const [enabledCharges, setEnabledCharges] = useState([]); // 支店設定から読み込んだ有効な加算項目
+  const { charges: masterCharges } = useChargeMaster(companyId);
+
+  // 加算チップの一覧 = 加算マスターでONした項目だけ（マスターが大元）
+  // 在宅生活(REMOTE_CHARGE_KEY)は通所/在宅トグルで制御するので手動チップからは除外（二重表示防止）
+  const enabledCharges = masterCharges
+    .filter(c => c.active !== false && c.key !== REMOTE_CHARGE_KEY)
+    .map(c => ({ key: c.key, label: c.shortLabel || c.name, color: c.color || '#94a3b8' }));
 
 
   const fetchTodaysData = useCallback(async () => {
@@ -31,51 +38,6 @@ const DailyCheckinPage = () => {
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
-
-      // 0. 支店設定を読み込み（自社の支店のみ取得）
-      const companyBranchFilter = companyId ? [where('companyId', '==', companyId)] : [];
-      const branchesSnapshot = await getDocs(
-        companyBranchFilter.length ? query(collection(db, 'branches'), ...companyBranchFilter) : collection(db, 'branches')
-      );
-      console.log('=== 支店設定デバッグ ===');
-      console.log('支店数:', branchesSnapshot.size);
-      if (!branchesSnapshot.empty) {
-        const branchData = branchesSnapshot.docs[0].data();
-        console.log('支店データ:', branchData);
-
-        // 支店設定から有効な加算項目を抽出
-        const charges = Object.entries(CHARGE_FIELD_MAP)
-          .filter(([fieldKey, _]) => {
-            const isEnabled = branchData[fieldKey] === true;
-            console.log(`${fieldKey}: ${branchData[fieldKey]} -> ${isEnabled ? '有効' : '無効'}`);
-            return isEnabled;
-          })
-          .map(([_, mapping]) => mapping);
-
-        console.log('有効な加算項目:', charges);
-
-        // 有効な加算項目がある場合のみセット、なければデフォルト
-        if (charges.length > 0) {
-          setEnabledCharges(charges);
-        } else {
-          console.log('加算項目がないのでデフォルトを使用');
-          // 支店で何も設定されていない場合はデフォルト（食事、送迎）を表示
-          setEnabledCharges([
-            CHARGE_FIELD_MAP.attendanceMealSupport,
-            CHARGE_FIELD_MAP.attendanceTransportGoing,
-            CHARGE_FIELD_MAP.attendanceTransportReturning,
-          ]);
-        }
-      } else {
-        console.log('支店設定がないのでデフォルトを使用');
-        // 支店設定がない場合はデフォルト（食事、送迎）
-        setEnabledCharges([
-          CHARGE_FIELD_MAP.attendanceMealSupport,
-          CHARGE_FIELD_MAP.attendanceTransportGoing,
-          CHARGE_FIELD_MAP.attendanceTransportReturning,
-        ]);
-      }
-
 
       // 1. 今日の既存の出欠記録を取得
       const companyFilter = companyId ? [where('companyId', '==', companyId)] : [];
@@ -138,6 +100,8 @@ const DailyCheckinPage = () => {
     // newAttendanceType: 'onsite' | 'remote' | 'absent'
     const newStatus = newAttendanceType === 'absent' ? 'absent' : 'present';
     const attendanceType = newAttendanceType === 'absent' ? null : newAttendanceType;
+    // 在宅＝在宅生活加算。形態の在宅選択で在宅生活(homeLife)を同期
+    const isRemote = newAttendanceType === 'remote';
 
     setRecords(prev => new Map(prev).set(clientId, { ...prev.get(clientId), status: 'loading' }));
     try {
@@ -146,6 +110,7 @@ const DailyCheckinPage = () => {
         await updateDoc(recordRef, {
           status: newStatus,
           attendanceType: attendanceType,
+          [`serviceDetails.${REMOTE_CHARGE_KEY}`]: isRemote,
           updatedAt: serverTimestamp()
         });
       } else {
@@ -164,12 +129,7 @@ const DailyCheckinPage = () => {
           attendanceType: attendanceType,
           startTime: newStatus === 'present' ? "10:00" : "",
           endTime: newStatus === 'present' ? "16:00" : "",
-          serviceDetails: {
-            mealSupport: false,
-            transportGoing: false,
-            transportReturning: false,
-            homeVisit: false,
-          },
+          serviceDetails: { [REMOTE_CHARGE_KEY]: isRemote },
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };

@@ -22,7 +22,9 @@ import { db } from '../../firebase/index';
 import { format } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import { useAuth } from '../auth/context/AuthContext';
-import { CHARGE_FIELD_MAP } from '../../constants/chargeFields';
+import { useTenant } from '../../context/TenantContext';
+import { useChargeMaster } from '../../hooks/useChargeMaster';
+import { REMOTE_CHARGE_KEY } from '../../constants/chargeMaster';
 import { roundTo30Min } from '../../utils/roundTime';
 
 export default function ServiceRecordEditModal({
@@ -33,11 +35,19 @@ export default function ServiceRecordEditModal({
     onSave,
 }) {
     const { currentUser } = useAuth();
+    const { activeCompanyId } = useTenant();
+    const { charges: masterCharges } = useChargeMaster(activeCompanyId);
     const [loading, setLoading] = useState(false);
     const [fetchedDocId, setFetchedDocId] = useState('');
     const [checkInData, setCheckInData] = useState(null);
-    const [enabledCharges, setEnabledCharges] = useState([]);
     const [chargeStates, setChargeStates] = useState({});
+    const [attendanceType, setAttendanceType] = useState('onsite');
+
+    // 加算チップの一覧 = 加算マスターでONした項目だけ（マスターが大元）
+    // 在宅生活(REMOTE_CHARGE_KEY)は「在宅」チップで制御するので手動チップからは除外（二重表示防止）
+    const enabledCharges = masterCharges
+        .filter(c => c.active !== false && c.key !== REMOTE_CHARGE_KEY)
+        .map(c => ({ key: c.key, label: c.shortLabel || c.name, color: c.color || '#94a3b8' }));
     const [form, setForm] = useState({
         specialNotes: '',
         supportContent: '',
@@ -91,46 +101,14 @@ export default function ServiceRecordEditModal({
     }, [attendanceRecord]);
 
 
-    // 支店設定から有効な加算項目を読み込み
-    useEffect(() => {
-        const loadCharges = async () => {
-            try {
-                const branchesSnapshot = await getDocs(collection(db, 'branches'));
-                if (!branchesSnapshot.empty) {
-                    const branchData = branchesSnapshot.docs[0].data();
-                    const charges = Object.entries(CHARGE_FIELD_MAP)
-                        .filter(([fieldKey]) => branchData[fieldKey] === true)
-                        .map(([, mapping]) => mapping);
-                    if (charges.length > 0) {
-                        setEnabledCharges(charges);
-                    } else {
-                        setEnabledCharges([
-                            CHARGE_FIELD_MAP.attendanceMealSupport,
-                            CHARGE_FIELD_MAP.attendanceTransportGoing,
-                            CHARGE_FIELD_MAP.attendanceTransportReturning,
-                        ]);
-                    }
-                } else {
-                    setEnabledCharges([
-                        CHARGE_FIELD_MAP.attendanceMealSupport,
-                        CHARGE_FIELD_MAP.attendanceTransportGoing,
-                        CHARGE_FIELD_MAP.attendanceTransportReturning,
-                    ]);
-                }
-            } catch (err) {
-                console.error('支店設定の取得に失敗:', err);
-            }
-        };
-        loadCharges();
-    }, []);
-
-    // attendanceRecordからserviceDetailsの初期状態を読み込み
+    // attendanceRecordからserviceDetails・出席種別の初期状態を読み込み
     useEffect(() => {
         if (attendanceRecord?.serviceDetails) {
             setChargeStates(attendanceRecord.serviceDetails);
         } else {
             setChargeStates({});
         }
+        setAttendanceType(attendanceRecord?.attendanceType || 'onsite');
     }, [attendanceRecord]);
 
     // 加算チップのトグル処理（即座にFirestoreを更新）
@@ -146,6 +124,25 @@ export default function ServiceRecordEditModal({
         } catch (err) {
             console.error('加算の更新に失敗:', err);
             alert('加算の更新に失敗しました');
+        }
+    };
+
+    // 在宅トグル（在宅＝在宅生活加算。出席種別と在宅生活(homeLife)を同期して切替）
+    const handleRemoteToggle = async () => {
+        if (!attendanceRecord?.id) return;
+        const isRemote = attendanceType !== 'remote';
+        const newType = isRemote ? 'remote' : 'onsite';
+        setAttendanceType(newType);
+        setChargeStates(prev => ({ ...prev, [REMOTE_CHARGE_KEY]: isRemote }));
+        try {
+            await updateDoc(doc(db, 'attendanceRecords', attendanceRecord.id), {
+                attendanceType: newType,
+                [`serviceDetails.${REMOTE_CHARGE_KEY}`]: isRemote,
+                updatedAt: serverTimestamp(),
+            });
+        } catch (err) {
+            console.error('在宅の更新に失敗:', err);
+            alert('在宅の更新に失敗しました');
         }
     };
 
@@ -188,7 +185,7 @@ export default function ServiceRecordEditModal({
                 date: Timestamp.fromDate(attendanceRecord.date),
                 startTime: roundTo30Min(attendanceRecord.startTime || '') || '',
                 endTime: roundTo30Min(attendanceRecord.endTime || '') || '',
-                attendanceType: attendanceRecord.attendanceType || 'onsite',
+                // 形態(attendanceType)は attendanceRecords を唯一の元とし、serviceRecords には焼き付けない
                 activitiesAm: form.activitiesAmText.split(/[,、]/).map(s => s.trim()).filter(s => s),
                 activitiesPm: form.activitiesPmText.split(/[,、]/).map(s => s.trim()).filter(s => s),
                 specialNotes: form.specialNotes,
@@ -240,7 +237,7 @@ export default function ServiceRecordEditModal({
             <DialogTitle sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Typography variant="h6">サービス記録編集</Typography>
-                    {attendanceRecord.attendanceType === 'remote' ? (
+                    {attendanceType === 'remote' ? (
                         <Chip
                             icon={<HomeIcon sx={{ fontSize: 16 }} />}
                             label="在宅"
@@ -333,12 +330,30 @@ export default function ServiceRecordEditModal({
                 )}
 
                 {/* 加算セクション */}
-                {enabledCharges.length > 0 && (
-                    <Box sx={{ mb: 3, bgcolor: 'rgba(15, 23, 42, 0.5)', p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
+                <Box sx={{ mb: 3, bgcolor: 'rgba(15, 23, 42, 0.5)', p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
                         <Typography variant="subtitle2" sx={{ color: '#f59e0b', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                             加算
                         </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {/* 在宅チップ（出席種別 remote/onsite のトグル。付け忘れの救済） */}
+                            <Chip
+                                label="在宅"
+                                size="small"
+                                clickable
+                                onClick={handleRemoteToggle}
+                                sx={{
+                                    fontSize: '0.8rem',
+                                    height: 28,
+                                    bgcolor: attendanceType === 'remote' ? 'rgba(139, 92, 246, 0.3)' : 'transparent',
+                                    color: attendanceType === 'remote' ? '#a78bfa' : '#94a3b8',
+                                    border: '1px solid',
+                                    borderColor: attendanceType === 'remote' ? 'rgba(139, 92, 246, 0.5)' : '#4a556830',
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                        bgcolor: attendanceType === 'remote' ? 'rgba(139, 92, 246, 0.4)' : '#4a556820',
+                                    },
+                                }}
+                            />
                             {enabledCharges.map(charge => {
                                 const isActive = chargeStates[charge.key] || false;
                                 return (
@@ -364,8 +379,7 @@ export default function ServiceRecordEditModal({
                                 );
                             })}
                         </Box>
-                    </Box>
-                )}
+                </Box>
 
                 <Divider sx={{ bgcolor: 'rgba(255,255,255,0.1)', mb: 2 }} />
 
@@ -419,7 +433,7 @@ export default function ServiceRecordEditModal({
                 <Divider sx={{ bgcolor: 'rgba(255,255,255,0.1)', mb: 2 }} />
 
                 {/* 在宅時連絡時刻（在宅の場合のみ表示） */}
-                {attendanceRecord.attendanceType === 'remote' && (
+                {attendanceType === 'remote' && (
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" sx={{ color: '#06b6d4', mb: 1 }}>
                             📞 在宅時連絡時刻

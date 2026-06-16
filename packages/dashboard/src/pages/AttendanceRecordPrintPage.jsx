@@ -12,24 +12,25 @@ import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'fireb
 import { db } from '../firebase';
 import { startOfMonth, endOfMonth, format, getDaysInMonth, addDays, getDay } from 'date-fns';
 import { roundTo30Min } from '../utils/roundTime';
+import { useTenant } from '../context/TenantContext';
+import { useChargeMaster } from '../hooks/useChargeMaster';
 
 // 曜日ラベル
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
-// 加算項目
-const getAdditions = (record) => {
+// 加算等（マスターでONの加算＝サービス記録のkeyだけを文字で並べる）
+// 形態の在宅(attendanceType)はここに混ぜない（二重表示・通所/在宅の曖昧さを防ぐ）
+const getAdditions = (record, chargeDefs = []) => {
     if (!record) return '-';
     const additions = [];
-    if (record.attendanceType === 'remote') additions.push('在宅');
-    if (record.serviceDetails?.mealSupport) additions.push('食事');
-    if (record.serviceDetails?.transportGoing) additions.push('送迎往');
-    if (record.serviceDetails?.transportReturning) additions.push('送迎復');
-    if (record.serviceDetails?.homeVisit) additions.push('訪問');
+    chargeDefs.forEach(def => {
+        if (record.serviceDetails?.[def.key]) additions.push(def.label);
+    });
     return additions.length > 0 ? additions.join('・') : '-';
 };
 
 // 印刷用HTML生成（1人分）
-const generateAttendanceHTML = (clientName, recipientId, year, month, records) => {
+const generateAttendanceHTML = (clientName, recipientId, year, month, records, chargeDefs) => {
     const daysInMonth = getDaysInMonth(new Date(year, month - 1));
     const firstDay = startOfMonth(new Date(year, month - 1));
 
@@ -61,16 +62,15 @@ const generateAttendanceHTML = (clientName, recipientId, year, month, records) =
         const status = record?.status === 'present' ? '○' : record?.status === 'absent' ? '×' : '';
         const startTime = record?.status === 'present' ? (roundTo30Min(record.startTime) || '') : '';
         const endTime = record?.status === 'present' ? (roundTo30Min(record.endTime) || '') : '';
-        const additions = record?.status === 'present' ? getAdditions(record) : '';
+        const additions = record?.status === 'present' ? getAdditions(record, chargeDefs) : '';
 
         tableRows += `<tr style="${rowBg}">
-            <td style="width:8%;text-align:center;">${dayNum}</td>
-            <td style="width:8%;text-align:center;${dayColor}">${DAY_LABELS[dayOfWeek]}</td>
-            <td style="width:8%;text-align:center;">${status}</td>
-            <td style="width:12%;text-align:center;">${startTime}</td>
-            <td style="width:12%;text-align:center;">${endTime}</td>
-            <td style="width:20%;text-align:left;padding-left:3mm;">${additions}</td>
-            <td style="width:24%;"></td>
+            <td style="width:7%;text-align:center;">${dayNum}</td>
+            <td style="width:7%;text-align:center;${dayColor}">${DAY_LABELS[dayOfWeek]}</td>
+            <td style="width:7%;text-align:center;">${status}</td>
+            <td style="width:11%;text-align:center;">${startTime}</td>
+            <td style="width:11%;text-align:center;">${endTime}</td>
+            <td style="width:57%;text-align:left;padding-left:3mm;">${additions}</td>
         </tr>`;
     }
 
@@ -94,8 +94,7 @@ const generateAttendanceHTML = (clientName, recipientId, year, month, records) =
                     <th style="width:7%;">出欠</th>
                     <th style="width:11%;">開始</th>
                     <th style="width:11%;">終了</th>
-                    <th style="width:20%;">加算等</th>
-                    <th style="width:37%;">備考</th>
+                    <th style="width:57%;">加算等</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
@@ -143,6 +142,13 @@ export default function AttendanceRecordPrintPage() {
     const { clientId } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const { activeCompanyId } = useTenant();
+    const { charges: masterCharges } = useChargeMaster(activeCompanyId);
+
+    // 加算等に並べる項目 = マスターでONした加算
+    const chargeDefs = masterCharges
+        .filter(c => c.active !== false)
+        .map(c => ({ key: c.key, label: c.shortLabel || c.name }));
 
     const [client, setClient] = useState(null);
     const [records, setRecords] = useState([]);
@@ -207,7 +213,7 @@ export default function AttendanceRecordPrintPage() {
     const handlePrint = () => {
         const body = generateAttendanceHTML(
             client?.name || '', client?.recipientId || '',
-            selectedYear, selectedMonth, records
+            selectedYear, selectedMonth, records, chargeDefs
         );
         const html = generateFullHTML(
             `出欠確認表_${client?.name || ''}_${selectedYear}年${selectedMonth}月`,
@@ -298,7 +304,7 @@ export default function AttendanceRecordPrintPage() {
                                                 <td>{rec?.status === 'present' ? '○' : rec?.status === 'absent' ? '×' : ''}</td>
                                                 <td>{rec?.status === 'present' ? roundTo30Min(rec.startTime) || '' : ''}</td>
                                                 <td>{rec?.status === 'present' ? roundTo30Min(rec.endTime) || '' : ''}</td>
-                                                <td style={{ textAlign: 'left' }}>{rec?.status === 'present' ? getAdditions(rec) : ''}</td>
+                                                <td style={{ textAlign: 'left' }}>{rec?.status === 'present' ? getAdditions(rec, chargeDefs) : ''}</td>
                                             </tr>
                                         );
                                     });

@@ -13,6 +13,7 @@ import { collection, query, getDocs, doc, getDoc, setDoc, deleteDoc, serverTimes
 import { db } from '../firebase/index';
 import { MUNICIPALITIES } from '../constants/municipalityConfig';
 import ActivityTemplateEditor from '../features/settings/ActivityTemplateEditor.jsx';
+import ChargeMasterEditor from '../features/settings/ChargeMasterEditor.jsx';
 
 // デフォルト設定値
 const DEFAULT_SETTINGS = {
@@ -266,6 +267,7 @@ export default function SupportSettingsPage() {
                     <Tab label="特記事項" />
                     <Tab label="サービス記録" />
                     <Tab label="自治体管理" />
+                    <Tab label="加算マスター" />
                     <Tab label="活動テンプレ" />
                     <Tab label="その他" />
                 </Tabs>
@@ -388,13 +390,18 @@ export default function SupportSettingsPage() {
                         )}
                     </TabPanel>
 
-                    {/* 活動テンプレタブ */}
+                    {/* 加算マスタータブ */}
                     <TabPanel value={tabValue} index={4}>
+                        <ChargeMasterEditor />
+                    </TabPanel>
+
+                    {/* 活動テンプレタブ */}
+                    <TabPanel value={tabValue} index={5}>
                         <ActivityTemplateEditor />
                     </TabPanel>
 
                     {/* その他タブ */}
-                    <TabPanel value={tabValue} index={5}>
+                    <TabPanel value={tabValue} index={6}>
                         <Paper sx={{ p: 3, bgcolor: 'rgba(30, 41, 59, 0.3)', textAlign: 'center' }}>
                             <Typography color="text.secondary">🚧 準備中...</Typography>
                         </Paper>

@@ -17,6 +17,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import BusinessIcon from '@mui/icons-material/Business';
 import WheelPicker from '../../components/WheelPicker';
 import { roundTo30Min } from '../../utils/roundTime';
+import { REMOTE_CHARGE_KEY } from '../../constants/chargeMaster';
 
 const MEDICATION_OPTIONS = [
     { value: 'taken', label: '飲んだ' },
@@ -222,11 +223,9 @@ export default function ClientCheckinPage() {
                 specialNotes: form.attendanceType === 'remote'
                     ? (form.activityNote ? `【在宅】 ${form.activityNote}` : '【在宅】')
                     : form.activityNote, // 特記事項として保存
+                // 在宅＝在宅生活加算を同期。その他の加算はスタッフ確認が必要なため出席/サービス記録で付ける
                 serviceDetails: {
-                    mealSupport: false,
-                    transportGoing: false, // 加算は利用者申告＋スタッフ確認が必要なためデフォルトfalse
-                    transportReturning: false,
-                    homeVisit: false,
+                    [REMOTE_CHARGE_KEY]: form.attendanceType === 'remote',
                 },
                 createdAt: Timestamp.now(),
                 updatedAt: Timestamp.now(),

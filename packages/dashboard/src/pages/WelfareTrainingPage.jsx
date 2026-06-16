@@ -262,15 +262,15 @@ export default function WelfareTrainingPage() {
         );
         const snapshot = await getDocs(q);
 
-        // workTypeで区別して集計
+        // 通所/在宅で区別して集計（attendanceTypeを正とし、workTypeは旧データ用フォールバック）
         let onsiteDays = 0;
         let remoteDays = 0;
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            if (data.workType === 'remote') {
+            const mode = data.attendanceType || data.workType;
+            if (mode === 'remote') {
                 remoteDays++;
             } else {
-                // workTypeがない古いデータ、またはonsiteは通所扱い
                 onsiteDays++;
             }
         });

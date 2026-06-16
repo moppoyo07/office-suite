@@ -20,11 +20,13 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
-import { doc, updateDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/index';
 import { format } from 'date-fns';
 import ja from 'date-fns/locale/ja';
-import { CHARGE_FIELD_MAP } from '../../constants/chargeFields';
+import { useTenant } from '../../context/TenantContext';
+import { useChargeMaster } from '../../hooks/useChargeMaster';
+import { REMOTE_CHARGE_KEY } from '../../constants/chargeMaster';
 import { roundTo30Min } from '../../utils/roundTime';
 
 const getDayOfWeek = (date) => {
@@ -40,54 +42,32 @@ export default function EditableServiceTable({
     onPrint,
     onSave,
 }) {
+    const { activeCompanyId } = useTenant();
+    const { charges: masterCharges } = useChargeMaster(activeCompanyId);
     const [editedRecords, setEditedRecords] = useState({});
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
-    const [enabledCharges, setEnabledCharges] = useState([]);
     const [chargeStates, setChargeStates] = useState({});
+    const [attendanceTypes, setAttendanceTypes] = useState({});
 
-    // 支店設定から有効な加算項目を読み込み + 各レコードの加算状態を初期化
-    React.useEffect(() => {
-        const loadCharges = async () => {
-            try {
-                const branchesSnapshot = await getDocs(collection(db, 'branches'));
-                if (!branchesSnapshot.empty) {
-                    const branchData = branchesSnapshot.docs[0].data();
-                    const charges = Object.entries(CHARGE_FIELD_MAP)
-                        .filter(([fieldKey]) => branchData[fieldKey] === true)
-                        .map(([, mapping]) => mapping);
-                    if (charges.length > 0) {
-                        setEnabledCharges(charges);
-                    } else {
-                        setEnabledCharges([
-                            CHARGE_FIELD_MAP.attendanceMealSupport,
-                            CHARGE_FIELD_MAP.attendanceTransportGoing,
-                            CHARGE_FIELD_MAP.attendanceTransportReturning,
-                        ]);
-                    }
-                } else {
-                    setEnabledCharges([
-                        CHARGE_FIELD_MAP.attendanceMealSupport,
-                        CHARGE_FIELD_MAP.attendanceTransportGoing,
-                        CHARGE_FIELD_MAP.attendanceTransportReturning,
-                    ]);
-                }
-            } catch (err) {
-                console.error('支店設定の取得に失敗:', err);
-            }
-        };
-        loadCharges();
-    }, []);
+    // 加算チップの一覧 = 加算マスターでONした項目だけ（マスターが大元）
+    // 在宅生活(REMOTE_CHARGE_KEY)は形態の「在宅」チップで制御するので手動チップからは除外（二重表示防止）
+    const enabledCharges = masterCharges
+        .filter(c => c.active !== false && c.key !== REMOTE_CHARGE_KEY)
+        .map(c => ({ key: c.key, label: c.shortLabel || c.name, color: c.color || '#94a3b8' }));
 
-    // レコードからserviceDetailsの初期状態を読み込み
+    // レコードからserviceDetails・出席種別の初期状態を読み込み
     React.useEffect(() => {
-        const initial = {};
+        const initialCharges = {};
+        const initialTypes = {};
         records.forEach(r => {
             if (r.serviceDetails) {
-                initial[r.id] = { ...r.serviceDetails };
+                initialCharges[r.id] = { ...r.serviceDetails };
             }
+            initialTypes[r.id] = r.attendanceType || 'onsite';
         });
-        setChargeStates(initial);
+        setChargeStates(initialCharges);
+        setAttendanceTypes(initialTypes);
     }, [records]);
 
     // 加算チップのトグル処理
@@ -106,6 +86,28 @@ export default function EditableServiceTable({
         } catch (err) {
             console.error('加算の更新に失敗:', err);
             alert('加算の更新に失敗しました');
+        }
+    };
+
+    // 在宅トグル（在宅＝在宅生活加算。出席種別と在宅生活(homeLife)を同期して切替）
+    const handleRemoteToggle = async (recordId) => {
+        const current = attendanceTypes[recordId] || 'onsite';
+        const isRemote = current !== 'remote';
+        const newType = isRemote ? 'remote' : 'onsite';
+        setAttendanceTypes(prev => ({ ...prev, [recordId]: newType }));
+        setChargeStates(prev => ({
+            ...prev,
+            [recordId]: { ...prev[recordId], [REMOTE_CHARGE_KEY]: isRemote },
+        }));
+        try {
+            await updateDoc(doc(db, 'attendanceRecords', recordId), {
+                attendanceType: newType,
+                [`serviceDetails.${REMOTE_CHARGE_KEY}`]: isRemote,
+                updatedAt: serverTimestamp(),
+            });
+        } catch (err) {
+            console.error('在宅の更新に失敗:', err);
+            alert('在宅の更新に失敗しました');
         }
     };
 
@@ -289,7 +291,7 @@ export default function EditableServiceTable({
                     </TableHead>
                     <TableBody>
                         {records.map((record) => {
-                            const isRemote = record.attendanceType === 'remote';
+                            const isRemote = (attendanceTypes[record.id] || record.attendanceType) === 'remote';
                             return (
                                 <TableRow
                                     key={record.id}
@@ -303,16 +305,19 @@ export default function EditableServiceTable({
                                         {format(record.date, 'M/d', { locale: ja })}
                                         <span style={{ color: '#64748b', fontSize: '0.7rem' }}>({getDayOfWeek(record.date)})</span>
                                     </TableCell>
-                                    {/* 形態 */}
+                                    {/* 形態（クリックで在宅/通所を切替。付け忘れの救済） */}
                                     <TableCell sx={{ px: 0.5 }}>
                                         <Chip
                                             label={isRemote ? '在宅' : '通所'}
                                             size="small"
+                                            clickable
+                                            onClick={() => handleRemoteToggle(record.id)}
                                             sx={{
                                                 bgcolor: isRemote ? 'rgba(139, 92, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)',
                                                 color: isRemote ? '#a78bfa' : '#10b981',
                                                 fontSize: '0.65rem',
                                                 height: 18,
+                                                cursor: 'pointer',
                                             }}
                                         />
                                     </TableCell>

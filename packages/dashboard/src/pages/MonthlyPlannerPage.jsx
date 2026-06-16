@@ -30,6 +30,7 @@ import { format, getDaysInMonth, addMonths, subMonths, getDay } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import { isHoliday } from '../utils/japaneseHolidays';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { REMOTE_CHARGE_KEY } from '../constants/chargeMaster';
 
 // 施設定員（仮）
 const FACILITY_CAPACITY = 20;
@@ -150,7 +151,8 @@ export default function MonthlyPlannerPage() {
             if (!recordsMap[data.clientId][dateStr]) {
               recordsMap[data.clientId][dateStr] = {
                 status: data.status,
-                workType: data.workType || 'onsite', // 通所/在宅
+                // 通所/在宅は attendanceType を正とする（出欠画面と一致させる）。workTypeは旧データ用フォールバック
+                workType: data.attendanceType || data.workType || 'onsite',
                 recordId: doc.id,
               };
             } else {
@@ -259,10 +261,11 @@ export default function MonthlyPlannerPage() {
     setSaving(true);
     try {
       if (currentRecord.status === 'present' && currentRecord.workType === 'onsite') {
-        // 通所 → 在宅
+        // 通所 → 在宅（在宅＝在宅生活加算を同期）
         await setDoc(doc(db, 'attendanceRecords', currentRecord.recordId), {
           workType: 'remote',
           attendanceType: 'remote',
+          [`serviceDetails.${REMOTE_CHARGE_KEY}`]: true,
           updatedAt: Timestamp.now(),
         }, { merge: true });
         setRecords(prev => ({
@@ -273,11 +276,12 @@ export default function MonthlyPlannerPage() {
           },
         }));
       } else if (currentRecord.status === 'present' && currentRecord.workType === 'remote') {
-        // 在宅 → 欠席
+        // 在宅 → 欠席（在宅生活加算も解除）
         await setDoc(doc(db, 'attendanceRecords', currentRecord.recordId), {
           status: 'absent',
           workType: null,
           attendanceType: null,
+          [`serviceDetails.${REMOTE_CHARGE_KEY}`]: false,
           updatedAt: Timestamp.now(),
         }, { merge: true });
         setRecords(prev => ({
@@ -327,12 +331,8 @@ export default function MonthlyPlannerPage() {
         endTime: modalForm.endTime,
         activitiesAm: modalForm.activities, // 活動内容
         activitiesPm: [],
-        serviceDetails: {
-          mealSupport: false,
-          transportGoing: false,
-          transportReturning: false,
-          homeVisit: false,
-        },
+        // 在宅＝在宅生活加算を同期
+        serviceDetails: { [REMOTE_CHARGE_KEY]: modalForm.attendanceType === 'remote' },
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
