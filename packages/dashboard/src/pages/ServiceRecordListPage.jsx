@@ -193,14 +193,16 @@ export default function ServiceRecordListPage() {
     };
 
     // モーダルを閉じる
+    // 在宅/通所トグルや加算チップはモーダル内で即時にFirestoreへ書き込むため、
+    // ✖/キャンセルで閉じた場合でも再取得しないと一覧が古いまま（変更が反映されない）。
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setSelectedRecord(null);
+        fetchData();
     };
 
-    // 保存後にデータを再取得
-    const handleSave = async () => {
-        await fetchData();
+    // 保存後にデータを再取得して閉じる
+    const handleSave = () => {
         handleCloseModal();
     };
 
@@ -512,7 +514,10 @@ export default function ServiceRecordListPage() {
                                 clientId={selectedClientForEdit.clientId}
                                 records={selectedClientForEdit.records}
                                 month={currentMonth}
-                                onClose={() => setSelectedClientIdForEdit(null)}
+                                onClose={() => {
+                                    setSelectedClientIdForEdit(null);
+                                    fetchData();
+                                }}
                                 onPrint={() => {
                                     setSelectedClientForPrint(selectedClientForEdit);
                                     handlePrepareAndPrint(selectedClientForEdit.clientId, selectedClientForEdit.clientName, selectedClientForEdit.records);
