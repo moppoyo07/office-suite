@@ -31,6 +31,20 @@ const formatDate = (date) => {
   }
 };
 
+// type="date" 入力用（yyyy-MM-dd）。不正値は空文字を返しクラッシュさせない
+const formatDateInput = (value) => {
+  try {
+    if (!value) return '';
+    const d = typeof value.toDate === 'function'
+      ? value.toDate()
+      : (value.seconds ? new Date(value.seconds * 1000) : new Date(value));
+    if (isNaN(d.getTime())) return '';
+    return format(d, 'yyyy-MM-dd');
+  } catch (error) {
+    return '';
+  }
+};
+
 const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, handleCancelEdit }) => {
   const [municipalities, setMunicipalities] = useState([]);
 
@@ -130,7 +144,7 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           name="recipientExpiry"
           label="受給者証有効期限"
           type="date"
-          value={data?.recipientExpiry ? format(new Date(data.recipientExpiry.seconds ? data.recipientExpiry.toDate() : data.recipientExpiry), 'yyyy-MM-dd') : ''}
+          value={formatDateInput(data?.recipientExpiry)}
           onChange={handleChange}
           fullWidth
           slotProps={{ inputLabel: { shrink: true } }}
@@ -145,7 +159,7 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           name="provisionalPeriodEndDate"
           label="暫定期間終了日"
           type="date"
-          value={data?.provisionalPeriodEndDate ? format(new Date(data.provisionalPeriodEndDate.seconds ? data.provisionalPeriodEndDate.toDate() : data.provisionalPeriodEndDate), 'yyyy-MM-dd') : ''}
+          value={formatDateInput(data?.provisionalPeriodEndDate)}
           onChange={handleChange}
           fullWidth
           slotProps={{ inputLabel: { shrink: true } }}
@@ -158,7 +172,7 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           name="contractDate"
           label="契約日"
           type="date"
-          value={data?.contractDate ? format(new Date(data.contractDate.seconds ? data.contractDate.toDate() : data.contractDate), 'yyyy-MM-dd') : ''}
+          value={formatDateInput(data?.contractDate)}
           onChange={handleChange}
           fullWidth
           slotProps={{ inputLabel: { shrink: true } }}
@@ -170,7 +184,7 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           name="serviceStartDate"
           label="利用開始日"
           type="date"
-          value={data?.serviceStartDate ? format(new Date(data.serviceStartDate.seconds ? data.serviceStartDate.toDate() : data.serviceStartDate), 'yyyy-MM-dd') : ''}
+          value={formatDateInput(data?.serviceStartDate)}
           onChange={handleChange}
           fullWidth
           slotProps={{ inputLabel: { shrink: true } }}
@@ -182,7 +196,7 @@ const WelfareContractSection = ({ isEditing, data, handleChange, handleSave, han
           name="serviceEndDate"
           label="利用終了日"
           type="date"
-          value={data?.serviceEndDate ? format(new Date(data.serviceEndDate.seconds ? data.serviceEndDate.toDate() : data.serviceEndDate), 'yyyy-MM-dd') : ''}
+          value={formatDateInput(data?.serviceEndDate)}
           onChange={handleChange}
           fullWidth
           slotProps={{ inputLabel: { shrink: true } }}

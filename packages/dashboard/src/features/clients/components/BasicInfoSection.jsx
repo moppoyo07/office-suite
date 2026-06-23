@@ -21,12 +21,27 @@ const formatDate = (date) => {
   }
 };
 
+// type="date" 入力用（yyyy-MM-dd）。不正値は空文字を返しクラッシュさせない
+const formatDateInput = (value) => {
+  try {
+    if (!value) return '';
+    const d = typeof value.toDate === 'function'
+      ? value.toDate()
+      : (value.seconds ? new Date(value.seconds * 1000) : new Date(value));
+    if (isNaN(d.getTime())) return '';
+    return format(d, 'yyyy-MM-dd');
+  } catch (error) {
+    return '';
+  }
+};
+
 // 交通手段の選択肢
 const TRANSPORT_TYPES = [
   { value: 'public', label: '公共交通(電車/バス)' },
   { value: 'private', label: '自家用車/バイク' },
   { value: 'service', label: '事業所送迎' },
   { value: 'walk', label: '徒歩/自転車' },
+  { value: 'other', label: 'その他' },
 ];
 
 const BasicInfoSection = ({ isEditing, data, clientId, handleChange, handleSave, handleCancelEdit, setEditedData }) => {
@@ -179,7 +194,7 @@ const BasicInfoSection = ({ isEditing, data, clientId, handleChange, handleSave,
                         sx={{ height: 20, fontSize: '0.7rem' }}
                       />
                       <Typography variant="body2" fontWeight="bold">
-                        {TRANSPORT_TYPES.find(t => t.value === route.type)?.label}
+                        {TRANSPORT_TYPES.find(t => t.value === route.type)?.label || 'その他'}
                         {route.company && ` (${route.company})`}
                       </Typography>
                     </Box>
@@ -347,7 +362,7 @@ const BasicInfoSection = ({ isEditing, data, clientId, handleChange, handleSave,
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6 }}><TextField size="small" name="name" label="氏名" value={data?.name || ''} onChange={handleChange} fullWidth /></Grid>
           <Grid size={{ xs: 12, sm: 6 }}><TextField size="small" name="nameKana" label="フリガナ" value={data?.nameKana || ''} onChange={handleChange} fullWidth /></Grid>
-          <Grid size={{ xs: 12, sm: 6 }}><TextField size="small" name="birthDate" label="生年月日" type="date" value={data?.birthDate ? format(new Date(data.birthDate.seconds ? data.birthDate.toDate() : data.birthDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} /></Grid>
+          <Grid size={{ xs: 12, sm: 6 }}><TextField size="small" name="birthDate" label="生年月日" type="date" value={formatDateInput(data?.birthDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} /></Grid>
           <Grid size={{ xs: 12, sm: 3 }}><TextField size="small" name="gender" label="性別" value={data?.gender || ''} onChange={handleChange} fullWidth /></Grid>
           <Grid size={{ xs: 12, sm: 3 }}><TextField size="small" name="bloodType" label="血液型" value={data?.bloodType || ''} onChange={handleChange} fullWidth /></Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -537,21 +552,21 @@ const BasicInfoSection = ({ isEditing, data, clientId, handleChange, handleSave,
         <Grid container spacing={2}>
           {/* 入所前フェーズ */}
           <Grid size={{ xs: 6, sm: 3 }}>
-            <TextField size="small" name="interviewDate" label="見学日" type="date" value={data?.interviewDate ? format(new Date(data.interviewDate.seconds ? data.interviewDate.toDate() : data.interviewDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="interviewDate" label="見学日" type="date" value={formatDateInput(data?.interviewDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <TextField size="small" name="trialStartDate" label="体験開始日" type="date" value={data?.trialStartDate ? format(new Date(data.trialStartDate.seconds ? data.trialStartDate.toDate() : data.trialStartDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="trialStartDate" label="体験開始日" type="date" value={formatDateInput(data?.trialStartDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <TextField size="small" name="contractDate" label="契約日" type="date" value={data?.contractDate ? format(new Date(data.contractDate.seconds ? data.contractDate.toDate() : data.contractDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="contractDate" label="契約日" type="date" value={formatDateInput(data?.contractDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <TextField size="small" name="serviceStartDate" label="利用開始日" type="date" value={data?.serviceStartDate ? format(new Date(data.serviceStartDate.seconds ? data.serviceStartDate.toDate() : data.serviceStartDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="serviceStartDate" label="利用開始日" type="date" value={formatDateInput(data?.serviceStartDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
 
           {/* 就職・離職 */}
           <Grid size={{ xs: 6, sm: 3 }}>
-            <TextField size="small" name="employmentDate" label="就職日" type="date" value={data?.employmentDate ? format(new Date(data.employmentDate.seconds ? data.employmentDate.toDate() : data.employmentDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="employmentDate" label="就職日" type="date" value={formatDateInput(data?.employmentDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <TextField size="small" name="employmentCompany" label="就職先企業名" value={data?.employmentCompany || ''} onChange={handleChange} fullWidth />
@@ -566,7 +581,7 @@ const BasicInfoSection = ({ isEditing, data, clientId, handleChange, handleSave,
             <TextField size="small" name="employmentContact" label="担当者" value={data?.employmentContact || ''} onChange={handleChange} fullWidth />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
-            <TextField size="small" name="retirementDate" label="離職日" type="date" value={data?.retirementDate ? format(new Date(data.retirementDate.seconds ? data.retirementDate.toDate() : data.retirementDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="retirementDate" label="離職日" type="date" value={formatDateInput(data?.retirementDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }} />
 
@@ -575,22 +590,22 @@ const BasicInfoSection = ({ isEditing, data, clientId, handleChange, handleSave,
             <Typography variant="body2" fontWeight="bold" sx={{ mt: 1, mb: 1 }}>定着支援面談予定</Typography>
           </Grid>
           <Grid size={{ xs: 6, sm: 2 }}>
-            <TextField size="small" name="followUp1MonthDate" label="1ヶ月目" type="date" value={data?.followUp1MonthDate ? format(new Date(data.followUp1MonthDate.seconds ? data.followUp1MonthDate.toDate() : data.followUp1MonthDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="followUp1MonthDate" label="1ヶ月目" type="date" value={formatDateInput(data?.followUp1MonthDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 2 }}>
-            <TextField size="small" name="followUp2MonthDate" label="2ヶ月目" type="date" value={data?.followUp2MonthDate ? format(new Date(data.followUp2MonthDate.seconds ? data.followUp2MonthDate.toDate() : data.followUp2MonthDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="followUp2MonthDate" label="2ヶ月目" type="date" value={formatDateInput(data?.followUp2MonthDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 2 }}>
-            <TextField size="small" name="followUp3MonthDate" label="3ヶ月目" type="date" value={data?.followUp3MonthDate ? format(new Date(data.followUp3MonthDate.seconds ? data.followUp3MonthDate.toDate() : data.followUp3MonthDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="followUp3MonthDate" label="3ヶ月目" type="date" value={formatDateInput(data?.followUp3MonthDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 2 }}>
-            <TextField size="small" name="followUp4MonthDate" label="4ヶ月目" type="date" value={data?.followUp4MonthDate ? format(new Date(data.followUp4MonthDate.seconds ? data.followUp4MonthDate.toDate() : data.followUp4MonthDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="followUp4MonthDate" label="4ヶ月目" type="date" value={formatDateInput(data?.followUp4MonthDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 2 }}>
-            <TextField size="small" name="followUp5MonthDate" label="5ヶ月目" type="date" value={data?.followUp5MonthDate ? format(new Date(data.followUp5MonthDate.seconds ? data.followUp5MonthDate.toDate() : data.followUp5MonthDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="followUp5MonthDate" label="5ヶ月目" type="date" value={formatDateInput(data?.followUp5MonthDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid size={{ xs: 6, sm: 2 }}>
-            <TextField size="small" name="followUp6MonthDate" label="6ヶ月目" type="date" value={data?.followUp6MonthDate ? format(new Date(data.followUp6MonthDate.seconds ? data.followUp6MonthDate.toDate() : data.followUp6MonthDate), 'yyyy-MM-dd') : ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField size="small" name="followUp6MonthDate" label="6ヶ月目" type="date" value={formatDateInput(data?.followUp6MonthDate)} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
         </Grid>
       </Grid>

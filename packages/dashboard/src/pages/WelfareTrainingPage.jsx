@@ -192,9 +192,11 @@ export default function WelfareTrainingPage() {
 
                 // 1. 日額分の計算
                 // 行政認定単価がある場合はそれを使用（全額日額扱いとする）
+                // 送迎・徒歩・自転車は交通実費が発生しないため運賃集計から除外
+                const noFareTypes = ['service', 'walk', 'bicycle'];
                 const dailyUnit = adminDayCost > 0
                     ? adminDayCost
-                    : dailyRoutes.reduce((sum, r) => sum + Number(r.costDiscounted || r.cost || 0), 0) * 2;
+                    : dailyRoutes.reduce((sum, r) => noFareTypes.includes(r.type) ? sum : sum + Number(r.costDiscounted || r.cost || 0), 0) * 2;
 
                 // 2. 定期分の計算
                 // monthlyPassに値があれば、経路設定に関係なく加算（広島市方式）
@@ -294,22 +296,33 @@ export default function WelfareTrainingPage() {
         if (routes.length > 0) {
             routes.forEach(r => {
                 const typeLabels = { 'public': '公共交通', 'train': '電車', 'bus': 'バス', 'private': '自家用車', 'walk': '徒歩', 'bicycle': '自転車', 'service': '事業所送迎' };
-                const typeLabel = typeLabels[r.type] || r.type || '公共交通';
-                const isWalkType = ['walk', 'bicycle', 'service'].includes(r.type);
+                // 不明・レガシー種別(例:'other')は生コードを出さず「その他」、未設定は公共交通扱い
+                const typeLabel = typeLabels[r.type] || (r.type ? 'その他' : '公共交通');
+                // 駅～駅表記をする手段（公共交通系のみ）。それ以外は駅表記しない
+                const useStationNotation = ['public', 'train', 'bus'].includes(r.type) || !r.type;
+                const isService = r.type === 'service';
 
                 let routeInfo = '';
-                if (isWalkType) {
-                    const fromTo = (r.from && r.to) ? `${r.from}～${r.to}` : '';
-                    routeInfo = fromTo ? `${fromTo}(${typeLabel})` : `(${typeLabel})`;
-                } else {
+                if (isService) {
+                    // 事業所送迎: 自治体向けに「事業所送迎」と明記（駅・運賃は出さない）
+                    const fromTo = (r.from && r.to) ? `(${r.from}～${r.to})` : '';
+                    routeInfo = `事業所送迎${fromTo}`;
+                } else if (useStationNotation) {
                     const companyInfo = r.company ? `【${r.company}】` : '';
                     routeInfo = `${companyInfo}${r.from || ''}駅～${r.to || ''}駅(${typeLabel})`;
+                } else {
+                    // 徒歩/自転車/自家用車/その他: 駅表記しない
+                    const fromTo = (r.from && r.to) ? `${r.from}～${r.to}` : '';
+                    routeInfo = fromTo ? `${fromTo}(${typeLabel})` : `(${typeLabel})`;
                 }
 
                 // 運賃情報
                 let costInfo = '';
                 // 支払い方法で分岐
-                if (r.paymentMethod === 'pass') {
+                if (isService) {
+                    // 送迎は交通実費が発生しないため運賃表記なし
+                    costInfo = '';
+                } else if (r.paymentMethod === 'pass') {
                     // 定期の場合：定期購入文言はここでは出さず、後でまとめて出すか、ここで出すか。
                     // ユーザー要望例: 【JR】... [1ヶ月定期券(5940円)購入]
                     // なので、ここで出すのが自然。ただし金額は全体の定期代(monthlyPass)を使う必要があるが、
