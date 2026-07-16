@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTenant } from '../context/TenantContext';
+import { printReceipts } from '../utils/receiptPrint';
 import { format } from 'date-fns';
 
 // 年度の月リスト（4月〜3月）を生成
@@ -43,7 +44,9 @@ function getCurrentFiscalYear() {
 }
 
 export default function BillingPage() {
-    const { activeCompanyId: companyId, loading: tenantLoading } = useTenant();
+    const { activeCompanyId: companyId, currentTenant, loading: tenantLoading } = useTenant();
+    const company = currentTenant?.company || {};
+    const branch = currentTenant?.branch || {};
     const [loading, setLoading] = useState(true);
     const [records, setRecords] = useState([]);
 
@@ -244,7 +247,7 @@ export default function BillingPage() {
                                     年間合計: <strong>¥{Object.values(monthTotals).reduce((s, v) => s + v, 0).toLocaleString()}</strong>
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                                    金額をクリックして訂正 ／ ステータスをクリックして入金切替
+                                    金額をクリックして訂正 ／ ステータスをクリックして入金切替 ／ 入金済の📄アイコンで領収書発行
                                 </Typography>
                             </Stack>
                         </Box>
@@ -330,16 +333,27 @@ export default function BillingPage() {
                                                         </Tooltip>
                                                         {/* ステータス（クリックで切替） */}
                                                         {isPaid ? (
-                                                            <Tooltip title={`${rec.paidAt?.toDate ? format(rec.paidAt.toDate(), 'M/d') : ''}入金済 — クリックで取消`}>
-                                                                <Chip
-                                                                    label="入金済"
-                                                                    size="small"
-                                                                    color="success"
-                                                                    icon={<CheckCircle sx={{ fontSize: 14 }} />}
-                                                                    onClick={() => handleUndoPaid(rec)}
-                                                                    sx={{ mt: 0.5, fontSize: '0.7rem', height: 20, cursor: 'pointer' }}
-                                                                />
-                                                            </Tooltip>
+                                                            <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center" sx={{ mt: 0.5 }}>
+                                                                <Tooltip title={`${rec.paidAt?.toDate ? format(rec.paidAt.toDate(), 'M/d') : ''}入金済 — クリックで取消`}>
+                                                                    <Chip
+                                                                        label="入金済"
+                                                                        size="small"
+                                                                        color="success"
+                                                                        icon={<CheckCircle sx={{ fontSize: 14 }} />}
+                                                                        onClick={() => handleUndoPaid(rec)}
+                                                                        sx={{ fontSize: '0.7rem', height: 20, cursor: 'pointer' }}
+                                                                    />
+                                                                </Tooltip>
+                                                                <Tooltip title="領収書を発行">
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        onClick={() => printReceipts(rec, company, branch)}
+                                                                        sx={{ p: 0.25, color: '#0891b2' }}
+                                                                    >
+                                                                        <ReceiptLong sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                            </Stack>
                                                         ) : (
                                                             <Tooltip title="クリックで入金確認">
                                                                 <Chip
@@ -404,10 +418,10 @@ export default function BillingPage() {
                     {editingCell && (
                         <Stack spacing={2} sx={{ pt: 1 }}>
                             <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                                <Typography variant="body2" color="text.secondary">利用者</Typography>
-                                <Typography fontWeight="bold">{editingCell.clientName}</Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>対象月</Typography>
-                                <Typography fontWeight="bold">
+                                <Typography variant="body2" sx={{ color: '#64748b' }}>利用者</Typography>
+                                <Typography fontWeight="bold" sx={{ color: '#1e293b' }}>{editingCell.clientName}</Typography>
+                                <Typography variant="body2" sx={{ color: '#64748b', mt: 1 }}>対象月</Typography>
+                                <Typography fontWeight="bold" sx={{ color: '#1e293b' }}>
                                     {editingCell.yearMonth.split('-')[0]}年{Number(editingCell.yearMonth.split('-')[1])}月
                                 </Typography>
                             </Box>
@@ -444,10 +458,10 @@ export default function BillingPage() {
                     {confirmDialog && (
                         <Stack spacing={2} sx={{ pt: 1 }}>
                             <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                                <Typography variant="body2" color="text.secondary">利用者</Typography>
-                                <Typography fontWeight="bold">{confirmDialog.record.clientName}</Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>対象月 / 請求額</Typography>
-                                <Typography fontWeight="bold">
+                                <Typography variant="body2" sx={{ color: '#64748b' }}>利用者</Typography>
+                                <Typography fontWeight="bold" sx={{ color: '#1e293b' }}>{confirmDialog.record.clientName}</Typography>
+                                <Typography variant="body2" sx={{ color: '#64748b', mt: 1 }}>対象月 / 請求額</Typography>
+                                <Typography fontWeight="bold" sx={{ color: '#1e293b' }}>
                                     {confirmDialog.record.yearMonth.split('-')[0]}年
                                     {Number(confirmDialog.record.yearMonth.split('-')[1])}月
                                     ／ ¥{(confirmDialog.record.amount || 0).toLocaleString()}
