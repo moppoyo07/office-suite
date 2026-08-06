@@ -1,5 +1,5 @@
 // src/pages/MonthlyAccountingPage.jsx
-// 月次経理作業ページ - 出欠確認表・厚生訓練費など
+// 月次経理作業ページ - 出欠確認表・更生訓練費など
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -354,7 +354,7 @@ export default function MonthlyAccountingPage() {
                         </Box>
                     </Paper>
 
-                {/* 厚生訓練費請求書カード（対象外の事業所には非表示） */}
+                {/* 更生訓練費請求書カード（対象外の事業所には非表示） */}
                     {hasWelfareTraining ? (
                         <Paper
                             elevation={4}
@@ -376,7 +376,7 @@ export default function MonthlyAccountingPage() {
                             <Box sx={{ textAlign: 'center' }}>
                                 <Typography variant="h1" sx={{ mb: 2 }}>💰</Typography>
                                 <Typography variant="h5" sx={{ color: 'white', fontWeight: 'bold', mb: 1 }}>
-                                    {welfareTrainingType === 'transport_only' ? '交通費請求書' : '厚生訓練費請求書'}
+                                    {welfareTrainingType === 'transport_only' ? '交通費請求書' : '更生訓練費請求書'}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
                                     {welfareTrainingType === 'transport_only' ? '交通費のみ' : '訓練費・交通費の請求書を作成'}
@@ -407,7 +407,7 @@ export default function MonthlyAccountingPage() {
                             <Box sx={{ textAlign: 'center' }}>
                                 <Typography variant="h1" sx={{ mb: 2, opacity: 0.3 }}>💰</Typography>
                                 <Typography variant="h5" sx={{ color: 'text.disabled', fontWeight: 'bold', mb: 1 }}>
-                                    厚生訓練費請求書
+                                    更生訓練費請求書
                                 </Typography>
                                 <Typography variant="body2" color="text.disabled">
                                     この事業所は対象外です

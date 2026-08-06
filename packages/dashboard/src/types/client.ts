@@ -49,7 +49,7 @@ export interface Client {
     hasHomeVisitSupport: boolean; // 訪問支援の対象者か
   };
 
-  // --- 厚生訓練費用の交通費情報 ---
+  // --- 更生訓練費用の交通費情報 ---
   welfareTrainingTransport?: {
     type: 'none' | 'regular' | 'commuter_pass';  // なし / 都度 / 定期
     dailyAmount?: number;       // 1日あたりの交通費（円）

@@ -327,7 +327,7 @@ export default function SupportSettingsPage() {
                     {/* 自治体管理タブ */}
                     <TabPanel value={tabValue} index={3}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h6" fontWeight="bold">厚生訓練費 対象自治体マスター</Typography>
+                            <Typography variant="h6" fontWeight="bold">更生訓練費 対象自治体マスター</Typography>
                             <Button variant="outlined" size="small" onClick={handleSeedMunicipalities} disabled={saving}>
                                 初期データを投入
                             </Button>

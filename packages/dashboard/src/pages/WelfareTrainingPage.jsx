@@ -465,7 +465,7 @@ export default function WelfareTrainingPage() {
             )}
 
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-                <Typography variant="h5" fontWeight="bold">厚生訓練費 請求管理</Typography>
+                <Typography variant="h5" fontWeight="bold">更生訓練費 請求管理</Typography>
                 <Stack direction="row" spacing={2}>
                     <Button
                         variant="outlined"

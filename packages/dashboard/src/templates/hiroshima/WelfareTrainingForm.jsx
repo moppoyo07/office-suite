@@ -118,7 +118,7 @@ export default function HiroshimaWelfareTrainingClaim({
                                 <td style={isEmpty ? { ...styles.tdCenter, borderTop: 'none' } : styles.tdCenter}>{row.trainDays || ''}</td>
                                 <td style={isEmpty ? { ...styles.tdRight, borderTop: 'none' } : styles.tdRight}>{row.trainUnit ? row.trainUnit.toLocaleString() : ''}</td>
                                 <td style={isEmpty ? { ...styles.tdRight, borderTop: 'none' } : styles.tdRight}>{row.trainAmount ? row.trainAmount.toLocaleString() : ''}</td>
-                                <td style={isEmpty ? { ...styles.tdCenter, borderTop: 'none' } : styles.tdCenter}>{row.commuteAmount ? (row.commuteDays || '') : ''}</td>
+                                <td style={isEmpty ? { ...styles.tdCenter, borderTop: 'none' } : styles.tdCenter}>{row.commuteDays || ''}</td>
                                 <td style={isEmpty ? { ...styles.tdRight, borderTop: 'none' } : styles.tdRight}>{row.commuteUnit ? row.commuteUnit.toLocaleString() : ''}</td>
                                 <td style={isEmpty ? { ...styles.tdRight, borderTop: 'none' } : styles.tdRight}>{row.commuteAmount ? row.commuteAmount.toLocaleString() : ''}</td>
                                 <td style={isEmpty ? { ...styles.tdDetail, borderTop: 'none' } : styles.tdDetail}>{row.transportNote || ''}</td>

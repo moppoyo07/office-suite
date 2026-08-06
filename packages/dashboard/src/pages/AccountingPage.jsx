@@ -1,5 +1,5 @@
 // src/pages/AccountingPage.jsx
-// 経理ページ：厚生訓練費 消込（マッチング）モックアップ v2
+// 経理ページ：更生訓練費 消込（マッチング）モックアップ v2
 
 import React, { useState } from 'react';
 import {

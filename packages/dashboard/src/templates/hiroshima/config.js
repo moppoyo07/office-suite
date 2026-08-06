@@ -6,7 +6,7 @@ export default {
     name: '広島市',
     prefectureCode: '34',
 
-    // 厚生訓練費の設定
+    // 更生訓練費の設定
     welfareTraining: {
         // 訓練費単価
         rate15DaysPlus: 3150,      // 15日以上の場合

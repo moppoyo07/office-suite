@@ -1,5 +1,5 @@
 // src/constants/municipalityConfig.js
-// 厚生訓練費申請書の対象自治体設定
+// 更生訓練費申請書の対象自治体設定
 
 /**
  * 自治体設定
