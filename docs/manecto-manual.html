@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manecto 操作マニュアル</title>
+<style>
+  :root {
+    --cyan: #0891b2;
+    --cyan-light: #ecfeff;
+    --purple: #7c3aed;
+    --ink: #1f2937;
+    --ink-soft: #4b5563;
+    --line: #e5e7eb;
+    --bg-soft: #f9fafb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Yu Gothic UI", "Yu Gothic", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    color: var(--ink);
+    line-height: 1.85;
+    font-size: 15px;
+    background: #fff;
+  }
+
+  /* ---- レイアウト ---- */
+  .layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  nav.toc {
+    position: sticky; top: 0; flex: 0 0 232px; height: 100vh; overflow-y: auto;
+    padding: 28px 18px 40px; border-right: 1px solid var(--line); background: var(--bg-soft);
+  }
+  nav.toc .brand { font-weight: 800; font-size: 1.05rem; letter-spacing: .02em; margin-bottom: 4px;
+    background: linear-gradient(90deg, var(--purple), var(--cyan));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  nav.toc .brand-sub { font-size: .7rem; color: #9ca3af; margin-bottom: 20px; letter-spacing: .08em; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: sec; }
+  nav.toc li { counter-increment: sec; margin-bottom: 2px; }
+  nav.toc a { display: block; padding: 5px 8px; border-radius: 6px; color: var(--ink-soft);
+    text-decoration: none; font-size: .82rem; line-height: 1.5; }
+  nav.toc a::before { content: counter(sec) ". "; color: #9ca3af; }
+  nav.toc a:hover { background: #fff; color: var(--cyan); }
+
+  main { flex: 1 1 auto; min-width: 0; padding: 0 44px 90px; }
+
+  /* ---- 表紙 ---- */
+  header.cover { padding: 54px 0 34px; border-bottom: 3px solid var(--cyan); margin-bottom: 40px; }
+  header.cover .logo { font-size: 2.5rem; font-weight: 800; letter-spacing: -.01em;
+    background: linear-gradient(90deg, var(--purple), var(--cyan));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header.cover h1 { font-size: 1.45rem; margin: 6px 0 14px; font-weight: 700; }
+  header.cover .lead { color: var(--ink-soft); max-width: 44em; margin: 0; }
+  header.cover .meta { margin-top: 22px; font-size: .78rem; color: #9ca3af; }
+
+  /* ---- 見出し ---- */
+  h2 { font-size: 1.3rem; margin: 56px 0 6px; padding-bottom: 8px; border-bottom: 2px solid var(--line);
+       scroll-margin-top: 20px; }
+  h2 .num { color: var(--cyan); font-weight: 800; margin-right: .5em; }
+  h2 + .chapter-lead { color: var(--ink-soft); margin: 10px 0 26px; font-size: .93rem; }
+  h3 { font-size: 1.03rem; margin: 34px 0 10px; padding-left: 11px; border-left: 4px solid var(--cyan); }
+  h4 { font-size: .93rem; margin: 22px 0 6px; color: var(--ink-soft); }
+  p { margin: 10px 0; }
+
+  /* ---- 表 ---- */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 22px; font-size: .88rem; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--bg-soft); font-weight: 700; white-space: nowrap; }
+  td code, p code, li code { background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px; font-size: .85em; }
+
+  /* ---- 手順リスト ---- */
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 14px 0 22px; }
+  ol.steps > li { counter-increment: step; position: relative; padding: 0 0 14px 40px; margin: 0; }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: 1px;
+    width: 25px; height: 25px; border-radius: 50%; background: var(--cyan); color: #fff;
+    font-size: .78rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps > li strong { display: block; }
+  ul.plain { padding-left: 1.25em; margin: 10px 0; }
+  ul.plain li { margin-bottom: 5px; }
+
+  /* ---- 注釈ボックス ---- */
+  .note { border-left: 4px solid var(--cyan); background: var(--cyan-light);
+          padding: 12px 16px; margin: 18px 0; font-size: .88rem; border-radius: 0 6px 6px 0; }
+  .warn { border-left: 4px solid #f59e0b; background: #fffbeb;
+          padding: 12px 16px; margin: 18px 0; font-size: .88rem; border-radius: 0 6px 6px 0; }
+  .note .t, .warn .t { font-weight: 700; display: block; margin-bottom: 3px; }
+  .warn .t { color: #b45309; }
+  .note .t { color: #0e7490; }
+  .note p:last-child, .warn p:last-child { margin-bottom: 0; }
+  .note p:first-of-type, .warn p:first-of-type { margin-top: 0; }
+
+  /* ---- フロー図 ---- */
+  .flow { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px;
+          padding: 22px 26px; margin: 22px 0; }
+  .flow-row { display: flex; align-items: flex-start; gap: 16px; padding: 11px 0; }
+  .flow-row + .flow-row { border-top: 1px dashed #d1d5db; }
+  .flow-stage { flex: 0 0 108px; font-weight: 700; font-size: .82rem; color: var(--purple);
+                padding-top: 2px; }
+  .flow-body { flex: 1 1 auto; font-size: .88rem; }
+  .flow-body .where { display: inline-block; background: #fff; border: 1px solid var(--cyan);
+    color: var(--cyan); border-radius: 4px; padding: 0 7px; font-size: .78rem; margin: 2px 4px 2px 0; }
+
+  /* ---- チェックリスト ---- */
+  ul.check { list-style: none; padding: 0; margin: 14px 0 22px; }
+  ul.check li { padding: 7px 0 7px 30px; position: relative; border-bottom: 1px dotted var(--line);
+                font-size: .9rem; }
+  ul.check li::before { content: ""; position: absolute; left: 2px; top: 12px;
+    width: 14px; height: 14px; border: 2px solid var(--cyan); border-radius: 3px; }
+
+  /* ---- スクショ差し込み枠 ---- */
+  .shot { border: 2px dashed #cbd5e1; border-radius: 8px; background: var(--bg-soft);
+          padding: 34px 20px; text-align: center; color: #94a3b8; font-size: .82rem; margin: 20px 0; }
+  .shot .cap { display: block; margin-top: 7px; font-size: .76rem; color: #b0b8c4; }
+
+  footer { margin-top: 70px; padding-top: 22px; border-top: 1px solid var(--line);
+           font-size: .8rem; color: #9ca3af; }
+
+  /* ---- 印刷 ---- */
+  @media print {
+    nav.toc { display: none; }
+    main { padding: 0; }
+    body { font-size: 10.5pt; line-height: 1.7; }
+    h2 { page-break-before: always; margin-top: 0; }
+    h2#ch1 { page-break-before: avoid; }
+    h3, table, .flow, .note, .warn, ol.steps > li { page-break-inside: avoid; }
+    header.cover { page-break-after: always; padding-top: 90px; }
+    .shot { display: none; }
+    a { color: inherit; text-decoration: none; }
+  }
+  @page { margin: 16mm 14mm; }
+
+  @media (max-width: 860px) {
+    nav.toc { display: none; }
+    main { padding: 0 20px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<nav class="toc">
+  <div class="brand">Manecto</div>
+  <div class="brand-sub">操作マニュアル</div>
+  <ol>
+    <li><a href="#ch1">はじめに</a></li>
+    <li><a href="#ch2">ログインと権限</a></li>
+    <li><a href="#ch3">画面の地図</a></li>
+    <li><a href="#ch4">業務の全体像</a></li>
+    <li><a href="#ch5">毎日やること</a></li>
+    <li><a href="#ch6">新しい利用者を受け入れる</a></li>
+    <li><a href="#ch7">毎月やること</a></li>
+    <li><a href="#ch8">就職と定着支援</a></li>
+    <li><a href="#ch9">年に一度やること</a></li>
+    <li><a href="#ch10">管理者の設定</a></li>
+    <li><a href="#ch11">帳票一覧</a></li>
+    <li><a href="#ch12">困ったときは</a></li>
+    <li><a href="#ch13">用語集</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="cover">
+  <div class="logo">Manecto</div>
+  <h1>操作マニュアル</h1>
+  <p class="lead">
+    就労支援事業所のための業務基幹システム。<br>
+    問い合わせから、日々の記録、月次の請求、就職後の定着支援、そして年次の報酬算定まで。
+    事業所の業務を一本の線でつなぎます。
+  </p>
+  <div class="meta">
+    2026年8月版 &nbsp;|&nbsp; https://manecto.web.app
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<h2 id="ch1"><span class="num">1</span>はじめに</h2>
+<p class="chapter-lead">この説明書の考え方と、Manectoの3つの入口について説明します。</p>
+
+<h3>1.1 この説明書は「手順書」ではありません</h3>
+<p>
+Manectoは「<strong>やっていないことが、ひとりでに目に入る</strong>」ことを目的に作られています。
+未入力のサービス記録、予約が入っていない利用者、入金が確認できていない請求、
+連絡が止まったままの問い合わせ——やり残しは、探しにいかなくても画面に数字と色で出てきます。
+</p>
+<p>
+ですからこの説明書は、ボタンをどの順に押すかではなく、
+<strong>「いつ・どの画面を開き・何を判断するか」</strong>を中心に書いています。
+画面の中の細かい操作は、開いてみれば分かるようになっています。
+迷ったら、まず開いてみてください。
+</p>
+
+<h3>1.2 3つの入口</h3>
+<p>Manectoは、使う人によって入口が3つに分かれています。</p>
+<table>
+  <tr><th>画面</th><th>使う人</th><th>端末</th><th>入口</th></tr>
+  <tr>
+    <td><strong>スタッフ画面</strong></td>
+    <td>支援員・サービス管理責任者・支店長</td>
+    <td>PC</td>
+    <td>https://manecto.web.app</td>
+  </tr>
+  <tr>
+    <td><strong>管理画面</strong></td>
+    <td>経営者・支店長</td>
+    <td>PC</td>
+    <td>スタッフ画面の左メニュー最下部「会社管理／支店管理」から</td>
+  </tr>
+  <tr>
+    <td><strong>利用者ポータル</strong></td>
+    <td>利用者ご本人</td>
+    <td>タブレット・スマホ</td>
+    <td>https://manecto.web.app/portal</td>
+  </tr>
+</table>
+<p>
+スタッフ画面と管理画面は<strong>Googleアカウント</strong>でログインします。
+利用者ポータルは<strong>4桁のPINコード</strong>だけで入れるので、利用者にメールアドレスやアカウントは必要ありません。
+玄関に置いたタブレット1台を全員で共有する使い方を想定しています。
+</p>
+
+<h3>1.3 動作環境</h3>
+<ul class="plain">
+  <li>PC：Google Chrome または Microsoft Edge の最新版を推奨します</li>
+  <li>タブレット・スマホ：iPad（Safari）、Android（Chrome）</li>
+  <li>インストールは不要です。URLを開くだけで使えます</li>
+  <li>データはクラウドに保存され、複数の端末で同時に開いても自動で同期されます</li>
+</ul>
+
+<div class="note">
+  <span class="t">この説明書での言葉づかい</span>
+  <p>「<strong>利用者</strong>」＝サービスを利用するご本人。「<strong>スタッフ</strong>」＝事業所の職員。
+  Manectoの画面上でもこの2つを使い分けています。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="ch2"><span class="num">2</span>ログインと権限</h2>
+<p class="chapter-lead">ログインの方法と、役職によって画面がどう変わるかを説明します。</p>
+
+<h3>2.1 ログインする</h3>
+<ol class="steps">
+  <li><strong>ブラウザで https://manecto.web.app を開く</strong>
+      よく使う場合はブックマークに入れておいてください。</li>
+  <li><strong>「Googleでログイン」を押す</strong>
+      事業所で使っているGoogleアカウントを選びます。</li>
+  <li><strong>ダッシュボードが開けば完了</strong>
+      次回からは自動でログインされます。</li>
+</ol>
+
+<div class="warn">
+  <span class="t">事前登録が必要です</span>
+  <p>管理画面のユーザー管理に登録されていないアカウントはログインできません。
+  新しいスタッフが入ったら、まず管理者が登録してください（<a href="#ch10">10章</a>）。</p>
+</div>
+
+<h3>2.2 自分の権限を確認する</h3>
+<p>
+画面の左上、Manectoのロゴの右にあるバッジが、いまログインしている人の権限です。
+権限によって、左メニューに出る項目と、見えるデータの範囲が変わります。
+</p>
+<table>
+  <tr><th>バッジ表示</th><th>役割</th><th>主にできること</th></tr>
+  <tr><td>Grand Admiral</td><td>Manecto運営（開発元）</td><td>全企業のデータとシステム設定</td></tr>
+  <tr><td>Fleet Staff</td><td>Manecto社員</td><td>導入支援・システム管理</td></tr>
+  <tr><td>Captain</td><td>利用企業の代表</td><td>自社すべて。管理画面・経理を含む</td></tr>
+  <tr><td>Chief Officer</td><td>支店長</td><td>自支店すべて。月次処理・年次処理・支店管理</td></tr>
+  <tr><td>Crew</td><td>現場スタッフ</td><td>利用者対応・記録・出欠など日常業務</td></tr>
+  <tr><td>Accountant / Tax Advisor</td><td>経理担当・顧問税理士</td><td>経理関連の画面のみ</td></tr>
+</table>
+
+<h3>2.3 メニューは事業所の種別でも変わります</h3>
+<p>
+支店に設定された<strong>サービス種別</strong>（就労移行支援／就労継続支援B型）によって、
+表示されるメニューが切り替わります。
+たとえば「月次処理（移行）」は、就労移行支援を行う支店にだけ表示されます。
+</p>
+<div class="note">
+  <span class="t">メニューが出ないときは</span>
+  <p>権限の問題か、支店のサービス種別が未設定かのどちらかです。
+  管理画面 → 支店 → サービス種別を確認してください。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="ch3"><span class="num">3</span>画面の地図</h2>
+<p class="chapter-lead">左メニューの各項目が「何をする場所か」の一覧です。迷ったらここに戻ってください。</p>
+
+<table>
+  <tr><th>メニュー</th><th>何をする場所か</th><th>いつ使うか</th></tr>
+  <tr><td><strong>ダッシュボード</strong></td>
+      <td>事業所全体の動きと、今日の自分のタスク</td><td>毎日いちばん最初</td></tr>
+  <tr><td><strong>CRMボード</strong></td>
+      <td>利用者を状況別に並べた一覧。全員がここに乗っています</td><td>随時。人を探すとき</td></tr>
+  <tr><td><strong>アラート一覧</strong></td>
+      <td>期限や予定が近づいている案件</td><td>毎日</td></tr>
+  <tr><td><strong>追客リスト</strong></td>
+      <td>今日連絡すべき問い合わせ</td><td>毎日</td></tr>
+  <tr><td><strong>支援作業</strong></td>
+      <td>日々の記録まわりの入口。ここから各画面へ</td><td>毎日</td></tr>
+  <tr><td><strong>月次処理（移行）</strong></td>
+      <td>前月の締めと帳票の発行</td><td>月初</td></tr>
+  <tr><td><strong>年次処理（移行）</strong></td>
+      <td>報酬区分の算定と届出</td><td>年1回</td></tr>
+  <tr><td><strong>経理</strong></td>
+      <td>入金の消し込みと会計まわり</td><td>随時</td></tr>
+  <tr><td><strong>会社管理／支店管理</strong></td>
+      <td>企業・支店・スタッフ・権限の設定</td><td>設定変更時</td></tr>
+</table>
+
+<h3>3.1 覚えておくと速い場所</h3>
+<ul class="plain">
+  <li><strong>左メニュー下部の検索窓</strong>：利用者名（ひらがな・カタカナどちらでも可）を打つと候補が出ます。
+      選ぶとその人の<strong>活動記録</strong>に直接飛べます。面談のあと、いちばん速く記録に入れる入口です。</li>
+  <li><strong>ヘッダー右のお知らせ</strong>：事業所内の新しい動きが流れます。</li>
+  <li><strong>左下の「Shutdown」</strong>：ログアウトです。共用PCでは必ず押してください。</li>
+</ul>
+
+<div class="shot">スクリーンショット差し込み位置<span class="cap">図1：ダッシュボードと左メニュー全体</span></div>
+
+<!-- ============================================================ -->
+<h2 id="ch4"><span class="num">4</span>業務の全体像</h2>
+<p class="chapter-lead">問い合わせから年次の報酬算定まで、どこで何をするかの見取り図です。</p>
+
+<div class="flow">
+  <div class="flow-row">
+    <div class="flow-stage">入口</div>
+    <div class="flow-body">
+      問い合わせを受けたら、まず利用者として登録します。以後、連絡のタイミングはシステムが指示します。
+      <br><span class="where">CRMボード</span><span class="where">追客リスト</span>
+    </div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-stage">見学・体験</div>
+    <div class="flow-body">
+      見学 → 体験 → 契約準備と、カードを進めていきます。予定日が近づくとアラートに出ます。
+      <br><span class="where">CRMボード</span><span class="where">アラート一覧</span>
+    </div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-stage">利用開始</div>
+    <div class="flow-body">
+      契約後、アセスメントを行い個別支援計画につなげます。同時に、請求に必要な設定を入れます。
+      <br><span class="where">利用者詳細</span><span class="where">アセスメント</span>
+    </div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-stage">毎日</div>
+    <div class="flow-body">
+      本人がタブレットでチェックイン／チェックアウト。スタッフはサービス記録と活動記録を残します。
+      <br><span class="where">利用者ポータル</span><span class="where">サービス記録</span><span class="where">活動記録</span>
+    </div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-stage">毎月</div>
+    <div class="flow-body">
+      翌月の予定を組み、前月を締めます。出欠確認表・サービス提供記録・利用料請求書・更生訓練費。
+      <br><span class="where">スケジュール作成</span><span class="where">月次処理</span>
+    </div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-stage">就職・定着</div>
+    <div class="flow-body">
+      就職後は定着支援へ。毎月レポートを記録します（最長3年6ヶ月）。
+      <br><span class="where">定着支援レポート</span>
+    </div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-stage">毎年</div>
+    <div class="flow-body">
+      平均利用者数と就労定着率を算定し、行政へ届け出ます。
+      <br><span class="where">年次処理</span>
+    </div>
+  </div>
+</div>
+
+<h3>4.1 記録は一本の線でつながっています</h3>
+<p>
+Manectoでいちばん大事な考え方です。
+</p>
+<p>
+毎日のチェックインと出欠は、月末の<strong>出欠確認表とサービス提供記録</strong>になります。
+それがそのまま<strong>利用料と更生訓練費の請求根拠</strong>になります。
+就職と定着支援の記録は、翌年度の<strong>基本報酬算定区分</strong>——つまり<strong>単価そのもの</strong>を決めます。
+</p>
+<p>
+別々の作業に見えるものが、実は一本でつながっています。
+逆にいえば、日々の記録を後回しにすると、そのツケは月末ではなく<strong>一年後の報酬</strong>に出ます。
+</p>
+
+<h3>4.2 利用者のステータス</h3>
+<p>すべての利用者は、次のいずれかの状態にあります。CRMボードの並びもこの順です。</p>
+<table>
+  <tr><th>ステータス</th><th>意味</th></tr>
+  <tr><td>新規問合せ</td><td>最初の接触。追客リストに載ります</td></tr>
+  <tr><td>面談・見学</td><td>見学の予定が入った／実施した</td></tr>
+  <tr><td>体験利用</td><td>体験利用中</td></tr>
+  <tr><td>契約準備中</td><td>利用が決まり、受給者証・契約の手続き中</td></tr>
+  <tr><td>施設内利用 ／ 施設外利用</td><td>利用中。通所か在宅かで分かれます</td></tr>
+  <tr><td>就職卒業 ／ 就職無し卒業</td><td>就職して卒業／期間満了での卒業</td></tr>
+  <tr><td>定着支援 1〜6ヶ月</td><td>就職後のフォロー期間</td></tr>
+  <tr><td>定着完了</td><td>定着支援が終了</td></tr>
+  <tr><td>利用終了</td><td>途中で終了した場合。終了理由を記録します</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="ch5"><span class="num">5</span>毎日やること</h2>
+<p class="chapter-lead">出勤してから退勤までの流れに沿って説明します。</p>
+
+<h3>5.1 朝：ダッシュボードを開く</h3>
+<p>ログインすると最初に出る画面です。2つのものが並んでいます。</p>
+<ul class="plain">
+  <li><strong>活動フィード</strong>：事業所全体で、今日誰が何を記録したかがリアルタイムに流れます。
+      朝いちばんに眺めれば、昨日から今朝にかけて何があったかが分かります。</li>
+  <li><strong>デイリークエスト</strong>：その日にやる定型業務のチェックリストです。
+      終わったものにチェックを入れると完了になります。項目は事業所ごとに設定できます。</li>
+</ul>
+
+<h3>5.2 アラート一覧を確認する</h3>
+<p>
+期限や予定が近づいている案件が集まる画面です。「明日」と表示されているものは翌日の予定なので、
+その日のうちに準備しておきます。
+</p>
+<table>
+  <tr><th>アラートの種類</th><th>内容</th></tr>
+  <tr><td>見学予定 / 体験開始</td><td>来訪・体験開始の予定日が近づいている</td></tr>
+  <tr><td>定着1〜6ヶ月面談</td><td>就職後の定着支援面談の時期</td></tr>
+  <tr><td>受給者証期限</td><td>受給者証の有効期限が近い。更新手続きが必要</td></tr>
+  <tr><td>アセスメント提出期限</td><td>アセスメントの提出期限</td></tr>
+</table>
+<p>利用者名での検索と、種類での絞り込みができます。</p>
+
+<h3>5.3 利用者の出欠</h3>
+<h4>本人が入力する（利用者ポータル）</h4>
+<ol class="steps">
+  <li><strong>来所したらタブレットで4桁のPINを入力</strong>
+      本人の画面が開きます。</li>
+  <li><strong>チェックイン</strong>
+      体温・気分・睡眠・服薬を入力します。この記録が毎日たまっていきます。</li>
+  <li><strong>帰るときにチェックアウト</strong>
+      その日の振り返りを入力してもらいます。</li>
+</ol>
+
+<h4>スタッフが入力・修正する</h4>
+<p>
+<strong>支援作業 → 日次チェックイン</strong>から、本人が押し忘れた分の代理入力や、
+出退所時刻の修正ができます。当日中に直しておけば、月末の帳票はそのまま出せます。
+</p>
+
+<div class="note">
+  <span class="t">チェックインの記録は本人に返せます</span>
+  <p>毎朝の体温・気分・睡眠・服薬は、<strong>支援作業 → 月間サマリー</strong>で1ヶ月分のグラフになります。
+  印刷して面談で本人に見せると、体調の波が自分で分かる資料になります。</p>
+</div>
+
+<div class="shot">スクリーンショット差し込み位置<span class="cap">図2：利用者ポータルのチェックイン画面</span></div>
+
+<h3>5.4 活動記録を残す</h3>
+<p>
+面談・電話・ご家族対応・その日の出来事など、<strong>後から「言った・言わない」になりやすいこと</strong>を残す場所です。
+</p>
+<p>
+入口は<strong>左メニュー下部の検索窓</strong>です。利用者名を打って候補から選ぶと、その人の活動記録が開きます。
+書いた内容はダッシュボードの活動フィードにも流れ、事業所全体で共有されます。
+</p>
+<div class="note">
+  <span class="t">なぜ活動記録が重要か</span>
+  <p>担当が代わったとき、休んだとき、退職したとき——事業所に残るのはこの記録だけです。
+  「その利用者に何があったか」を思い出せるかどうかが、支援の質と、退所の防止に直結します。</p>
+</div>
+
+<h3>5.5 サービス記録を入力する</h3>
+<p>
+<strong>支援作業 → サービス記録</strong>。提供したサービスの公式な記録で、請求と監査の根拠になります。
+通所か在宅かの区別と、支援内容を記録します。
+</p>
+<p>
+一覧は月単位で表示され、<strong>未入力の日は色で分かる</strong>ようになっています。
+毎日入れるのが理想ですが、週末や月末にまとめて追いかけることもできます。
+</p>
+
+<h3>5.6 追客リストで連絡する</h3>
+<p>
+問い合わせから利用開始までのフォローは、この画面だけ見ていれば回ります。
+<strong>今日連絡すべき人だけ</strong>が出ます。
+</p>
+<ol class="steps">
+  <li><strong>リストを開く</strong>
+      表示されている人が、今日の対象です。</li>
+  <li><strong>電話・メールをして、結果を記録する</strong>
+      つながった／つながらなかったを含めて記録します。</li>
+  <li><strong>次回の連絡日は自動で入ります</strong>
+      連絡の回数が増えるほど、次の間隔が自動的に空いていきます。自分で予定を管理する必要はありません。</li>
+</ol>
+<p><strong>リストが空になっていれば、その日の追客は終わりです。</strong></p>
+
+<h3>5.7 そのほか毎日見るもの</h3>
+<table>
+  <tr><th>画面</th><th>内容</th></tr>
+  <tr><td>振り返りログ</td><td>利用者がチェックアウト時に書いた振り返りの一覧</td></tr>
+  <tr><td>LINE管理</td><td>LINE公式アカウントに届いたメッセージを利用者に紐付けます。紐付けると過去のやり取りがまとめて活動記録に入ります</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="ch6"><span class="num">6</span>新しい利用者を受け入れる</h2>
+<p class="chapter-lead">問い合わせから利用開始までの流れと、契約時に必ず設定するものを説明します。</p>
+
+<h3>6.1 まず登録する</h3>
+<p>
+<strong>CRMボード → 新規利用者を追加</strong>。問い合わせを受けた段階で登録してかまいません。
+むしろ<strong>早く登録するほど追客リストが働きます</strong>。名前と連絡先だけでも先に入れてください。
+</p>
+
+<h3>6.2 新規獲得ボードで進める</h3>
+<p>CRMボードの「新規」タブは、4つの列に分かれています。</p>
+<p style="text-align:center; font-size:.9rem; background:var(--bg-soft); border:1px solid var(--line); border-radius:6px; padding:14px;">
+新規問合せ &nbsp;→&nbsp; 面談・見学 &nbsp;→&nbsp; 体験利用 &nbsp;→&nbsp; 契約準備中
+</p>
+<p>
+状況が進んだら、カードにあるボタンで次の段階へ進めます。
+このとき<strong>日付の入力を求める確認画面</strong>が出ます。ここで入れた日付が、アラートや実績の集計に使われます。
+</p>
+<p>
+残念ながら利用に至らなかった場合は、カードから終了の操作をします。
+このとき<strong>理由</strong>（見学前離脱／見学後辞退／体験中辞退／契約直前辞退 など）を選びます。
+この理由の蓄積が、どこで人が離れているかを見るデータになります。
+</p>
+<p>右上には<strong>今月の総問い合わせ数</strong>が出ています。</p>
+
+<h3>6.3 利用が決まったら設定するもの</h3>
+<p>
+ここが<strong>あとの月次処理でつまずかないための要</strong>です。
+契約時に、利用者詳細ページで次を設定してください。
+</p>
+<ul class="check">
+  <li><strong>月次利用上限（上限月額）</strong> — 未設定だと利用料請求書の対象になりません</li>
+  <li><strong>PINコード（4桁）</strong> — 利用者ポータルのログインに使います</li>
+  <li><strong>受給者証の情報と有効期限</strong> — 期限が近づくとアラートに出ます</li>
+  <li><strong>更生訓練費の請求事業所</strong> — 自事業所で請求するか、他事業所が請求するか</li>
+  <li><strong>交通費の設定</strong> — なし／都度（1日あたりの金額）／定期（月額）</li>
+  <li><strong>送迎の有無</strong> — サービス記録と請求に反映されます</li>
+</ul>
+<div class="warn">
+  <span class="t">ここを飛ばすと月末に困ります</span>
+  <p>上限月額が空だと請求書に出てこず、交通費の設定が空だと更生訓練費の金額が合いません。
+  月末に「なぜこの人が出ないのか」と探すことになるので、契約時にまとめて入れてしまうのが確実です。</p>
+</div>
+
+<h3>6.4 アセスメントと個別支援計画</h3>
+<p>
+利用者詳細から<strong>アセスメント</strong>を開くと、項目に沿って順に入力できます。
+入力した内容はそのまま印刷でき、個別支援計画を作るときの資料になります。
+</p>
+<p>この段階で印刷できるもの：フェイスシート／アセスメントシート（一般・精神）／利用者情報</p>
+
+<div class="shot">スクリーンショット差し込み位置<span class="cap">図3：CRMボード（新規獲得ボード）</span></div>
+
+<!-- ============================================================ -->
+<h2 id="ch7"><span class="num">7</span>毎月やること</h2>
+<p class="chapter-lead">月初にやることは2つです。「翌月の予定を組む」と「前月を締める」。</p>
+
+<h3>7.1 翌月の予定を組む</h3>
+<ol class="steps">
+  <li><strong>支援作業 → スケジュール作成</strong>
+      誰がいつ来るかを組みます。まだ予約が入っていない利用者は、支援作業ダッシュボードに
+      「未予約 ◯名」と数字で出ているので、そこがゼロになるまで埋めます。</li>
+  <li><strong>支援作業 → 月間出席計画</strong>
+      カレンダー形式で月全体を見ながら調整します。偏りや空きが一目で分かります。</li>
+</ol>
+
+<h3>7.2 前月を締める</h3>
+<p>
+左メニューの<strong>月次処理（移行）</strong>を開き、まず画面上部で<strong>対象月</strong>を選びます。
+以降の作業はすべて、選んだ月に対して行われます。
+</p>
+
+<h4>月次の締めチェックリスト</h4>
+<ul class="check">
+  <li><strong>サービス記録の未入力を埋める</strong>（支援作業 → サービス記録で色の付いた日を確認）</li>
+  <li><strong>出欠確認表</strong>を印刷する — 利用者別の出欠一覧</li>
+  <li><strong>サービス提供記録（実績記録票）</strong>を一括印刷する</li>
+  <li><strong>利用料請求書</strong>を発行し、一括印刷する</li>
+  <li><strong>更生訓練費支給申請書</strong>を作成し、福祉センターへ提出する</li>
+  <li><strong>前月分の入金消し込み</strong>を確認する</li>
+</ul>
+
+<h4>利用料請求書</h4>
+<p>
+月次処理の画面で「請求書発行」を押すと、<strong>上限月額が設定されている利用者</strong>に対して請求が作られます。
+対象人数はカードに表示されているので、想定より少なければ設定漏れを疑ってください。
+発行後、「一括印刷」でまとめて印刷できます。
+</p>
+
+<h4>更生訓練費</h4>
+<p>
+対象の事業所にだけ表示されます。<strong>出席実績から自動で計算</strong>され、
+市の様式どおりの「更生訓練費支給申請書」ができあがります。毎月、福祉センターへ提出する帳票です。
+</p>
+<table>
+  <tr><th>項目</th><th>計算</th></tr>
+  <tr><td>訓練費</td><td>月15日以上の利用 → 3,150円 ／ 14日以下 → 1,600円</td></tr>
+  <tr><td>交通費</td><td>通所日数 × 1日単価（在宅日は除く）。定期の場合は月額固定</td></tr>
+</table>
+<div class="note">
+  <span class="t">自治体ごとの様式に対応します</span>
+  <p>現在は広島市の様式に対応しています。他の自治体の様式も追加できますので、導入担当者にご相談ください。</p>
+</div>
+
+<h3>7.3 入金の消し込みと領収書</h3>
+<p>
+<strong>支援作業 → 利用料管理</strong>（月次処理の「消し込み画面へ」からも入れます）。
+発行済みの請求に対して、入金を記録していきます。
+</p>
+<p>
+<strong>未入金はリストに残り続けます。</strong>放置されている請求が自然に目に入るので、
+別途Excelで管理台帳をつける必要はありません。入金を確認したら、その場で領収書を発行できます。
+</p>
+
+<h3>7.4 月間サマリーを渡す</h3>
+<p>
+<strong>支援作業 → 月間サマリー</strong>。その月のチェックイン記録（体温・気分・睡眠・服薬）がグラフになります。
+印刷して面談で本人に渡すと、そのまま支援の材料になります。
+</p>
+
+<div class="shot">スクリーンショット差し込み位置<span class="cap">図4：月次処理の画面と各帳票カード</span></div>
+
+<!-- ============================================================ -->
+<h2 id="ch8"><span class="num">8</span>就職と定着支援</h2>
+<p class="chapter-lead">就職後の記録は、翌年の報酬単価に直結します。</p>
+
+<ol class="steps">
+  <li><strong>就職が決まったら、CRMボードでステータスを「就職卒業」にする</strong>
+      就職日を入力します。</li>
+  <li><strong>定着支援のフェーズに入る</strong>
+      1ヶ月目から6ヶ月目まで段階が分かれ、面談時期になるとアラートに出ます。</li>
+  <li><strong>毎月、定着支援レポートを記録する</strong>
+      利用者詳細から開きます。訪問記録・目標・状況を残します。</li>
+  <li><strong>定着支援計画も同じ画面から印刷できる</strong></li>
+</ol>
+
+<div class="note">
+  <span class="t">定着支援は書類仕事ではありません</span>
+  <p>ここで積んだ記録が、翌年度の<strong>就労定着率</strong>になり、
+  <strong>基本報酬算定区分</strong>——つまり事業所の単価そのものを決めます。
+  年次処理はこの記録を集計しているだけなので、月々の入力が結果のすべてです。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="ch9"><span class="num">9</span>年に一度やること</h2>
+<p class="chapter-lead">左メニュー「年次処理（移行）」から。支店長以上が対象です。</p>
+
+<table>
+  <tr><th>やること</th><th>内容</th></tr>
+  <tr>
+    <td><strong>平均利用者数算定</strong></td>
+    <td>前年度の平均利用者数を算定し、職員配置基準を満たしているかを確認します。算定シートとして印刷できます</td>
+  </tr>
+  <tr>
+    <td><strong>基本報酬算定区分 届出書（別紙38）</strong></td>
+    <td>就労定着率から区分を算定し、提出様式を自動で作成します</td>
+  </tr>
+</table>
+
+<p>
+どちらも、日々のチェックイン・出席実績・定着支援レポートから<strong>自動で計算されます</strong>。
+Excelに転記して集計し直す作業はありません。
+</p>
+<div class="note">
+  <span class="t">この機能は実際に行政へ提出された実績があります</span>
+  <p>2026年、この機能で算定した書類を実際に行政へ提出し、翌年の就職者数の見込みまで算出しています。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="ch10"><span class="num">10</span>管理者の設定</h2>
+<p class="chapter-lead">左メニュー最下部の「会社管理／支店管理」から入ります。</p>
+
+<table>
+  <tr><th>メニュー</th><th>内容</th></tr>
+  <tr><td>企業・支店</td><td>事業所の基本情報と、サービス種別（就労移行支援／B型）の設定。ここでスタッフ側のメニューの出方が変わります</td></tr>
+  <tr><td>ユーザー管理</td><td>スタッフの追加・権限の変更・退職処理。<strong>新しいスタッフはここに登録しないとログインできません</strong></td></tr>
+  <tr><td>権限（RBAC）</td><td>権限 × 機能のマトリクスで、どの役職に何を許可するかを細かく設定できます</td></tr>
+  <tr><td>クエストカテゴリ</td><td>デイリークエストの項目とポイントを設定します</td></tr>
+  <tr><td>職員勤務予定表</td><td>常勤換算・人員配置基準の確認に使います</td></tr>
+  <tr><td>申請書類チェックリスト</td><td>新規指定申請に必要な書類の管理</td></tr>
+  <tr><td>対象自治体マスター</td><td>更生訓練費の様式を使う自治体の設定（支援作業 → 設定）</td></tr>
+</table>
+
+<h4>新しいスタッフが入ったら</h4>
+<ol class="steps">
+  <li><strong>ユーザー管理 → 追加</strong>で、氏名とGoogleアカウントのメールアドレスを登録</li>
+  <li><strong>権限を選ぶ</strong>（通常のスタッフは Crew）</li>
+  <li><strong>所属支店を設定する</strong> — 見えるデータの範囲がこれで決まります</li>
+  <li><strong>本人にURLを伝える</strong> — 登録したGoogleアカウントでログインできます</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="ch11"><span class="num">11</span>帳票一覧</h2>
+<p class="chapter-lead">印刷できるものと、その入口の一覧です。</p>
+
+<table>
+  <tr><th>帳票</th><th>どこから出すか</th><th>頻度</th></tr>
+  <tr><td>フェイスシート</td><td>利用者詳細</td><td>随時</td></tr>
+  <tr><td>アセスメントシート（一般・精神）</td><td>利用者詳細／アセスメント</td><td>随時</td></tr>
+  <tr><td>サービス提供記録（実績記録票）</td><td>月次処理</td><td>毎月</td></tr>
+  <tr><td>出欠確認表</td><td>月次処理</td><td>毎月</td></tr>
+  <tr><td>出席記録表（個人別）</td><td>サービス記録</td><td>随時</td></tr>
+  <tr><td>利用料請求書・領収書</td><td>月次処理／利用料管理</td><td>毎月</td></tr>
+  <tr><td>更生訓練費支給申請書</td><td>月次処理</td><td>毎月（福祉センター提出）</td></tr>
+  <tr><td>定着支援計画・定着支援レポート</td><td>利用者詳細</td><td>毎月</td></tr>
+  <tr><td>月間サマリー</td><td>支援作業</td><td>毎月</td></tr>
+  <tr><td>平均利用者数 算定シート</td><td>年次処理</td><td>年1回</td></tr>
+  <tr><td>基本報酬算定区分 届出書（別紙38）</td><td>年次処理</td><td>年1回</td></tr>
+</table>
+<p>
+いずれもブラウザの印刷機能で出力します。印刷ダイアログで<strong>用紙サイズと余白を既定のまま</strong>にしておくと、
+様式どおりのレイアウトで出ます。PDFとして保存することもできます。
+</p>
+
+<!-- ============================================================ -->
+<h2 id="ch12"><span class="num">12</span>困ったときは</h2>
+
+<table>
+  <tr><th>症状</th><th>原因と対処</th></tr>
+  <tr>
+    <td>ログインできない（アカウントがないと出る）</td>
+    <td>管理画面のユーザー管理に、そのGoogleアカウントのメールアドレスが登録されているか確認してください</td>
+  </tr>
+  <tr>
+    <td>左メニューに「月次処理」が出ない</td>
+    <td>支店のサービス種別に「就労移行支援」が設定されていません。管理画面 → 支店 で確認してください</td>
+  </tr>
+  <tr>
+    <td>利用料請求書に特定の利用者が出てこない</td>
+    <td>その利用者の<strong>月次利用上限（上限月額）</strong>が未設定です。利用者詳細で設定してください</td>
+  </tr>
+  <tr>
+    <td>更生訓練費の金額が合わない</td>
+    <td>交通費の設定（都度／定期・1日単価）と、在宅利用日の記録を確認してください。在宅日は交通費の対象外です</td>
+  </tr>
+  <tr>
+    <td>更生訓練費のメニューが出ない</td>
+    <td>対象の事業所にのみ表示されます。導入時の設定が必要なので導入担当者にご連絡ください</td>
+  </tr>
+  <tr>
+    <td>利用者ポータルにログインできない</td>
+    <td>PINコードが未設定か、桁数が違います。利用者詳細の基本情報で4桁のPINを確認してください</td>
+  </tr>
+  <tr>
+    <td>印刷すると2ページに分かれてしまう</td>
+    <td>印刷ダイアログの拡大縮小が変更されている可能性があります。「既定」に戻してください</td>
+  </tr>
+  <tr>
+    <td>更新したのに画面が変わらない</td>
+    <td>ブラウザのキャッシュです。<code>Ctrl</code> + <code>Shift</code> + <code>R</code> で再読み込みしてください</td>
+  </tr>
+  <tr>
+    <td>別のスタッフが入れた記録が見えない</td>
+    <td>所属支店が違うと見えません。権限と所属を管理者に確認してください</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="ch13"><span class="num">13</span>用語集</h2>
+
+<table>
+  <tr><th>用語</th><th>意味</th></tr>
+  <tr><td>CRMボード</td><td>利用者を状況別に並べた一覧画面。問い合わせから定着完了まで、全員がここに乗ります</td></tr>
+  <tr><td>追客</td><td>問い合わせから利用開始までのフォロー連絡</td></tr>
+  <tr><td>デイリークエスト</td><td>その日の定型業務のチェックリスト。完了するとポイントが貯まります</td></tr>
+  <tr><td>活動記録</td><td>利用者ごとの出来事のログ。面談・電話・家族対応など</td></tr>
+  <tr><td>サービス記録</td><td>提供したサービスの公式な記録。請求と監査の根拠になります</td></tr>
+  <tr><td>月次利用上限（上限月額）</td><td>利用者ごとの自己負担の上限額。利用料請求の計算に使います</td></tr>
+  <tr><td>更生訓練費</td><td>自治体から利用者に支給される訓練費・交通費。事業所が毎月まとめて福祉センターに請求します</td></tr>
+  <tr><td>別紙38</td><td>基本報酬算定区分の届出様式。就労定着率によって事業所の単価が決まります</td></tr>
+  <tr><td>サービス種別</td><td>就労移行支援／就労継続支援B型の区分。支店ごとに設定し、メニューの出方が変わります</td></tr>
+</table>
+
+<footer>
+  Manecto 操作マニュアル｜2026年8月版<br>
+  ご不明な点は導入担当者までお問い合わせください。
+</footer>
+
+</main>
+</div>
+
+</body>
+</html>
