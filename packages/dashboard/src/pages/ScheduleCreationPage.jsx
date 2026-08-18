@@ -26,17 +26,18 @@ import PendingIcon from '@mui/icons-material/Pending';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { format, startOfMonth, startOfWeek, addMonths, subMonths, isSameMonth, isToday, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, subMonths, isSameMonth, isToday, isSameDay } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import { getUpcomingHolidays, isHoliday } from '../utils/japaneseHolidays';
 import CelebrationIcon from '@mui/icons-material/Celebration';
 
-// 5行7列（35マス）のコンパクトカレンダーデータを生成
+// 7列 × 必要な週数（5行または6行）のカレンダーデータを生成
 const generateCalendarDays = (monthDate) => {
     const startD = startOfWeek(startOfMonth(monthDate), { weekStartsOn: 0 });
+    const endD = endOfWeek(endOfMonth(monthDate), { weekStartsOn: 0 });
     const days = [];
-    for (let i = 0; i < 35; i++) {
-        days.push(new Date(startD.getFullYear(), startD.getMonth(), startD.getDate() + i));
+    for (let d = startD; d <= endD; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+        days.push(d);
     }
     return days;
 };
@@ -331,7 +332,7 @@ export default function ScheduleCreationPage() {
                     </Box>
 
                     {/* カレンダー本体 */}
-                    <Box sx={{ p: 1.5, overflow: 'hidden' }}>
+                    <Box sx={{ p: 1.5, flexShrink: 0 }}>
                         {/* 曜日ヘッダー */}
                         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.5 }}>
                             {['日', '月', '火', '水', '木', '金', '土'].map((day, i) => (
@@ -350,8 +351,8 @@ export default function ScheduleCreationPage() {
                             ))}
                         </Box>
 
-                        {/* 日付グリッド - 固定高さ */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(5, 56px)', gap: 0.5 }}>
+                        {/* 日付グリッド */}
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '56px', gap: 0.5 }}>
                             {calendarDays.map((day) => {
                                 const dateKey = format(day, 'yyyy-MM-dd');
                                 const isCurrentMonth = isSameMonth(day, currentMonth);
