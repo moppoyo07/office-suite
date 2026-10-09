@@ -1,13 +1,18 @@
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
+// firebase-functions v6 以降、ルート import は 2nd gen になる。
+// 2nd gen に移すと lineWebhook の URL が変わり LINE 側の設定が壊れるため、1st gen のまま据え置く。
+const functions = require("firebase-functions/v1");
+// firebase-admin v13 以降、admin.firestore() 等の名前空間 API は廃止された。
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const crypto = require("crypto");
 
-admin.initializeApp();
-const db = admin.firestore();
+initializeApp();
+const db = getFirestore();
 
 /**
  * LINE Webhook エンドポイント（第1世代）
  * 環境変数は .env ファイルから自動で読み込まれる
+ * URL は LINE Developers コンソールに登録済み。関数名・リージョン・世代を変えると URL が変わる
  */
 exports.lineWebhook = functions.https.onRequest(async (req, res) => {
   const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
@@ -81,7 +86,7 @@ async function handleEvent(event, accessToken) {
         staffUid: "line_bot",
         staffName: "LINE自動記録",
         companyId: clientData.companyId || null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
         source: "line",
         lineUserId: lineUserId,
       });
@@ -100,7 +105,7 @@ async function handleEvent(event, accessToken) {
       displayName,
       messageType: event.message.type,
       message: messageText,
-      receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+      receivedAt: FieldValue.serverTimestamp(),
       linked: false,
     });
 
@@ -132,6 +137,33 @@ exports.sendLineMessage = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("not-found", "クライアントが見つかりません");
   }
   const clientData = clientDoc.data();
+
+  // 送信者が、その利用者を抱える企業に属しているかを検証する
+  // 画面から作成したユーザーは doc ID が自動採番で uid と一致しないため、uid フィールド → email の順で探す
+  let userDoc = await db.collection("users").doc(auth.uid).get();
+  if (!userDoc.exists) {
+    const byUid = await db.collection("users").where("uid", "==", auth.uid).limit(1).get();
+    if (!byUid.empty) {
+      userDoc = byUid.docs[0];
+    } else if (auth.token.email) {
+      const byEmail = await db.collection("users").where("email", "==", auth.token.email).limit(1).get();
+      if (!byEmail.empty) userDoc = byEmail.docs[0];
+    }
+  }
+  const userData = userDoc.exists ? userDoc.data() : {};
+  const isPlatform = ["platform_owner", "platform_staff"].includes(userData.role);
+  const allowedCompanyIds = [
+    userData.companyId,
+    ...(userData.assignedCompanies || []),
+  ].filter(Boolean);
+
+  if (!isPlatform && !allowedCompanyIds.includes(clientData.companyId)) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "この利用者へ送信する権限がありません"
+    );
+  }
+
   const lineUserId = clientData.lineUserId;
   if (!lineUserId) {
     throw new functions.https.HttpsError("failed-precondition", "このクライアントはLINE未連携です");
@@ -157,9 +189,6 @@ exports.sendLineMessage = functions.https.onCall(async (data, context) => {
   }
 
   // 送信ログを activity_logs に記録
-  const userDoc = await db.collection("users").doc(auth.uid).get();
-  const userData = userDoc.exists ? userDoc.data() : {};
-
   await db.collection("clients").doc(clientId).collection("activity_logs").add({
     type: "line_reply",
     content: message,
@@ -167,7 +196,7 @@ exports.sendLineMessage = functions.https.onCall(async (data, context) => {
     staffUid: auth.uid,
     staffName: userData.displayName || auth.token?.name || "スタッフ",
     companyId: clientData.companyId || null,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
     source: "line",
     lineUserId: lineUserId,
   });

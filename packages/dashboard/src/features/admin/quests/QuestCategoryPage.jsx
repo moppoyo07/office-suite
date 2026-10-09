@@ -203,7 +203,7 @@ export default function QuestCategoryPage() {
   }
 
   if (!companyId) {
-    return <CompanyIdSetup uid={profile?.uid || profile?.id} />;
+    return <CompanyIdSetup userDocId={profile?.id} />;
   }
 
   const activeCount   = categories.filter(c => c.isActive).length;
@@ -411,7 +411,7 @@ export default function QuestCategoryPage() {
 }
 
 // 会社IDが未設定のオーナー向けセットアップ画面
-function CompanyIdSetup({ uid }) {
+function CompanyIdSetup({ userDocId }) {
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -419,10 +419,10 @@ function CompanyIdSetup({ uid }) {
   const handleSave = async () => {
     const trimmed = value.trim();
     if (!trimmed) { setError('会社IDを入力してください'); return; }
-    if (!uid) { setError('ユーザー情報が取得できません。再ログインしてください'); return; }
+    if (!userDocId) { setError('ユーザー情報が取得できません。再ログインしてください'); return; }
     setSaving(true);
     try {
-      await setDoc(doc(db, 'users', uid), { companyId: trimmed }, { merge: true });
+      await setDoc(doc(db, 'users', userDocId), { companyId: trimmed }, { merge: true });
       // onSnapshot が反応してページが再レンダリングされる
     } catch (e) {
       console.error('companyId保存エラー:', e);

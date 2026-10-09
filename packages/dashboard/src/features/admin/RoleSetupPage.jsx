@@ -100,7 +100,7 @@ export default function RoleSetupPage() {
                     <TableBody>
                         {users.map(user => {
                             const meta = ROLE_METADATA[user.role];
-                            const isMe = user.id === currentUser?.uid;
+                            const isMe = user.id === currentUser?.userDocId;
                             return (
                                 <TableRow key={user.id} sx={isMe ? { bgcolor: 'rgba(139,92,246,0.15)' } : {}}>
                                     <TableCell sx={{ color: '#fff' }}>
